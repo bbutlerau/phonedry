@@ -1,0 +1,32 @@
+{{!--
+  M1 status panel. This exists to prove the boot path worked on a real device:
+  if the canvas is off and this is the only thing on screen, the design holds.
+  It is replaced by the sheet frame and tab bar in M2.
+--}}
+<header class="phonedry-shell__header">
+  <h1>Phonedry</h1>
+  {{#if actorName}}
+    <p class="phonedry-shell__actor">{{actorName}}</p>
+    {{#if actorClass}}<p class="phonedry-shell__actor-detail">{{actorClass}}</p>{{/if}}
+  {{else}}
+    <p class="phonedry-shell__actor phonedry-shell__actor--none">
+      No character assigned to {{userName}}
+    </p>
+  {{/if}}
+</header>
+
+<dl class="phonedry-shell__diagnostics">
+  <dt>Canvas</dt>
+  <dd class="{{#if canvasDisabled}}phonedry-ok{{else}}phonedry-bad{{/if}}">
+    {{#if canvasDisabled}}disabled{{else}}STILL RUNNING{{/if}}
+  </dd>
+
+  <dt>Layout</dt>
+  <dd>{{#if isTablet}}tablet{{else}}phone{{/if}} ({{viewport}}, breakpoint {{breakpoint}}px)</dd>
+
+  <dt>Foundry</dt>
+  <dd>{{foundryVersion}}</dd>
+
+  <dt>System</dt>
+  <dd>{{systemVersion}}</dd>
+</dl>

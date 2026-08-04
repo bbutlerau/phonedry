@@ -35,6 +35,27 @@ Known consequences to design around, not fight:
   tracker instead.
 - Scene switching is blocked while the canvas is off.
 
+## Target devices
+
+iOS and Android are both first-class: iPhone and iPad, and Pixel and Galaxy
+phones on Chrome or Samsung Internet. Detection is capability-based rather than
+user-agent based, so it covers all of them without a device list to maintain.
+
+The two platforms fail differently, and both need testing:
+
+- **Android resizes the viewport when the on-screen keyboard opens.** Anything
+  reacting to `resize` must compare width, not height, or it will re-render the
+  sheet out from under someone who is typing. iOS does not resize for the
+  keyboard, so this class of bug is invisible on an iPad.
+- **Android Chrome has pull-to-refresh.** A downward swipe at the top of a
+  scroll container reloads the whole client unless `overscroll-behavior: none`
+  is in force.
+- **iOS is where the memory ceiling bites.** Android's limits are more generous,
+  so a build that feels fine on a Pixel can still be killed on an iPhone.
+- Safe-area insets matter on both — notches on iOS, punch-hole cutouts and
+  gesture bars on Android — and both need `viewport-fit=cover` to report
+  anything but zero.
+
 ## Rules that keep the module correct
 
 - **Never reimplement dnd5e's rules.** Every roll delegates to the system's own

@@ -1,28 +1,164 @@
 /*
  * Phonedry styles.
  *
- * Scoped under .phonedry-active on <body> so that nothing here can leak into a
- * normal desktop session. If the mobile client is not engaged, none of these
- * rules apply and Foundry looks exactly as it always did.
- *
- * Layout arrives with the sheet in M2. For now this file establishes the
- * custom properties everything else will be built from, so colours and spacing
- * are defined in one place rather than scattered through templates.
+ * Everything is scoped under .phonedry-active on <body>, which only Phonedry's
+ * boot path adds. Without it none of this applies, so a desktop session is
+ * untouched even though the stylesheet is always loaded.
  */
 
 .phonedry-active {
-  /* Touch targets. 44px is Apple's minimum recommended hit area, and it is a
-     sensible floor for anything a player taps mid-combat. */
+  /* Touch targets. 44px is Apple's minimum recommended hit area and a sensible
+     floor for anything tapped mid-combat. */
   --phonedry-touch-target: 44px;
 
-  /* Spacing scale. */
   --phonedry-gap-sm: 0.25rem;
   --phonedry-gap-md: 0.5rem;
   --phonedry-gap-lg: 1rem;
 
-  /* Safe-area insets so content clears the notch and home indicator on iOS.
-     These resolve to 0 on devices without insets, so they are safe to apply
-     unconditionally. */
+  /* Safe-area insets. These only report real values because boot.mjs appends
+     viewport-fit=cover to Foundry's viewport meta; without that they are always
+     zero. They resolve to zero on devices with no insets, so applying them
+     unconditionally is safe. */
   --phonedry-safe-top: env(safe-area-inset-top, 0px);
   --phonedry-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --phonedry-safe-left: env(safe-area-inset-left, 0px);
+  --phonedry-safe-right: env(safe-area-inset-right, 0px);
+
+  --phonedry-bg: #16161a;
+  --phonedry-surface: #23232b;
+  --phonedry-text: #e8e6e3;
+  --phonedry-muted: #9a978f;
+  --phonedry-accent: #c9a227;
+  --phonedry-ok: #6bbf59;
+  --phonedry-bad: #d9534f;
+
+  background: var(--phonedry-bg);
+  color: var(--phonedry-text);
+
+  /* The tabletop scrolls its own regions; a phone client should not rubber-band
+     the page itself behind the sheet.
+
+     On Android this does more than stop a bounce: it disables Chrome's
+     pull-to-refresh gesture. Without it, a downward swipe at the top of the
+     sheet reloads the entire Foundry client, which mid-combat is about the
+     worst thing an accidental gesture could do. */
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/*
+ * Belt and braces against core UI.
+ *
+ * boot.mjs already prevents these applications from rendering, so in normal
+ * operation there is nothing here to hide. These rules exist for the case where
+ * a module renders one of them directly rather than through CONFIG.ui, which
+ * would otherwise drop a desktop-sized panel on top of the sheet.
+ */
+.phonedry-active #ui-top,
+.phonedry-active #ui-left,
+.phonedry-active #ui-right,
+.phonedry-active #ui-bottom,
+.phonedry-active #board,
+.phonedry-active #pause {
+  display: none !important;
+}
+
+/* Notifications stay, but need to clear the notch. */
+.phonedry-active #notifications {
+  top: calc(var(--phonedry-safe-top) + var(--phonedry-gap-md));
+  left: var(--phonedry-gap-md);
+  right: var(--phonedry-gap-md);
+  width: auto;
+}
+
+/* -------------------------------------------- */
+/*  Shell                                       */
+/* -------------------------------------------- */
+
+.phonedry-active .phonedry-shell {
+  position: fixed;
+  inset: 0;
+
+  /* Padding rather than inset offsets, so a scrolling child can still run
+     edge to edge behind the insets instead of leaving dead bands of colour. */
+  padding:
+    calc(var(--phonedry-safe-top) + var(--phonedry-gap-lg))
+    calc(var(--phonedry-safe-right) + var(--phonedry-gap-lg))
+    calc(var(--phonedry-safe-bottom) + var(--phonedry-gap-lg))
+    calc(var(--phonedry-safe-left) + var(--phonedry-gap-lg));
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--phonedry-gap-lg);
+  overflow-y: auto;
+
+  /* Momentum scrolling without the page-level bounce. */
+  -webkit-overflow-scrolling: touch;
+
+  background: var(--phonedry-bg);
+  color: var(--phonedry-text);
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.phonedry-active .phonedry-shell__header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--phonedry-accent);
+  border: none;
+}
+
+.phonedry-active .phonedry-shell__actor {
+  margin: var(--phonedry-gap-sm) 0 0;
+  font-size: 1.25rem;
+}
+
+.phonedry-active .phonedry-shell__actor--none {
+  color: var(--phonedry-muted);
+  font-size: 1rem;
+}
+
+.phonedry-active .phonedry-shell__actor-detail {
+  margin: 0;
+  color: var(--phonedry-muted);
+}
+
+.phonedry-active .phonedry-shell__diagnostics {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--phonedry-gap-sm) var(--phonedry-gap-lg);
+  margin: 0;
+  padding: var(--phonedry-gap-lg);
+  background: var(--phonedry-surface);
+  border-radius: 0.5rem;
+}
+
+.phonedry-active .phonedry-shell__diagnostics dt {
+  color: var(--phonedry-muted);
+}
+
+.phonedry-active .phonedry-shell__diagnostics dd {
+  margin: 0;
+}
+
+.phonedry-active .phonedry-ok { color: var(--phonedry-ok); }
+.phonedry-active .phonedry-bad { color: var(--phonedry-bad); font-weight: bold; }
+
+/* -------------------------------------------- */
+/*  Tablet                                      */
+/* -------------------------------------------- */
+
+/*
+ * Tablets get more on screen rather than different features. For now that only
+ * means the shell stops stretching diagnostics across a very wide viewport;
+ * from M2 this is where the two-column stats rail lives.
+ */
+@media (min-width: 768px) {
+  .phonedry-active .phonedry-shell {
+    align-items: start;
+  }
+
+  .phonedry-active .phonedry-shell__diagnostics {
+    max-width: 32rem;
+  }
 }

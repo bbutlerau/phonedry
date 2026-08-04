@@ -17,6 +17,11 @@ The trade-off is real and deliberate. **Phonedry is not a way to play on the map
 - Foundry VTT v13 or v14
 - The `dnd5e` system, version 5.0.0 or later
 
+Supported on iPhone and iPad (Safari), and on Android phones and tablets
+(Chrome and Samsung Internet). Phonedry decides whether to load from the
+device's input capabilities rather than its user-agent string, so it does not
+need a list of device names to keep up to date.
+
 ## Status
 
 Early development. Not yet released.
