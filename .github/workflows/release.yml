@@ -1,0 +1,56 @@
+name: Release
+
+# Publishes a Foundry-installable release whenever a version tag is pushed.
+#
+# Foundry installs a module from two URLs: a manifest it can re-fetch to check
+# for updates, and a zip to download. Both must be stable, which is why
+# module.json points at the /releases/latest/download/ paths rather than at any
+# particular tag. This workflow attaches both files to the release so those
+# paths resolve.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Derive version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      # The tag is the single source of truth for the version. If module.json
+      # disagrees, fail loudly here rather than shipping a release whose
+      # manifest advertises the wrong version — Foundry's update check compares
+      # this field, so a mismatch means clients either miss the update or
+      # reinstall endlessly.
+      - name: Verify module.json matches the tag
+        run: |
+          manifest_version=$(jq -r .version module.json)
+          if [ "$manifest_version" != "${{ steps.version.outputs.version }}" ]; then
+            echo "module.json version ($manifest_version) does not match tag (${{ steps.version.outputs.version }})"
+            exit 1
+          fi
+
+      - name: Build release zip
+        run: |
+          zip -r phonedry.zip \
+            module.json LICENSE README.md CHANGELOG.md \
+            scripts styles templates lang \
+            -x "*.DS_Store"
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Phonedry ${{ github.ref_name }}
+          files: |
+            module.json
+            phonedry.zip
+          generate_release_notes: true

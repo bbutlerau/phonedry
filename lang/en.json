@@ -1,0 +1,13 @@
+{
+  "PHONEDRY": {
+    "Settings": {
+      "Mode": {
+        "Name": "Mobile client",
+        "Hint": "Load the lightweight character sheet instead of the full tabletop. On automatic, Phonedry loads on touch devices such as phones and tablets, and stays out of the way everywhere else. Changing this reloads the page.",
+        "Auto": "Automatic (touch devices only)",
+        "Always": "Always on",
+        "Never": "Never"
+      }
+    }
+  }
+}

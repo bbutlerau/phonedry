@@ -5,20 +5,19 @@ Thumbs.db
 .vscode/
 *.swp
 
-# Env / secrets
+# Node tooling (tests only — the module itself ships unbundled)
+node_modules/
+npm-debug.log*
+coverage/
+
+# Build output from the release workflow
+dist/
+*.zip
+
+# Environment / secrets. Phonedry needs none of these, but the rule costs
+# nothing and stops an accidental commit if that ever changes.
 .env
 .env.*
 !.env.example
-
-# Logs
-*.log
-logs/
-
-# Dependencies / build output
-node_modules/
-dist/
-build/
-__pycache__/
-*.py[cod]
-.venv/
-venv/
+*.key
+secrets/

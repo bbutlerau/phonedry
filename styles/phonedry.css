@@ -1,0 +1,28 @@
+/*
+ * Phonedry styles.
+ *
+ * Scoped under .phonedry-active on <body> so that nothing here can leak into a
+ * normal desktop session. If the mobile client is not engaged, none of these
+ * rules apply and Foundry looks exactly as it always did.
+ *
+ * Layout arrives with the sheet in M2. For now this file establishes the
+ * custom properties everything else will be built from, so colours and spacing
+ * are defined in one place rather than scattered through templates.
+ */
+
+.phonedry-active {
+  /* Touch targets. 44px is Apple's minimum recommended hit area, and it is a
+     sensible floor for anything a player taps mid-combat. */
+  --phonedry-touch-target: 44px;
+
+  /* Spacing scale. */
+  --phonedry-gap-sm: 0.25rem;
+  --phonedry-gap-md: 0.5rem;
+  --phonedry-gap-lg: 1rem;
+
+  /* Safe-area insets so content clears the notch and home indicator on iOS.
+     These resolve to 0 on devices without insets, so they are safe to apply
+     unconditionally. */
+  --phonedry-safe-top: env(safe-area-inset-top, 0px);
+  --phonedry-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
