@@ -149,26 +149,34 @@ export function rollDeathSave(actor, mode = ROLL_MODE.NORMAL) {
 }
 
 /**
- * Roll initiative.
+ * Roll initiative, without dnd5e's configuration dialog.
  *
- * This one keeps dnd5e's own dialog, which is the exception that proves the
- * rule above. `rollInitiativeDialog` is the only entry point that also places
- * the actor into the combat tracker and stores the result against the right
- * combatant; the non-dialog `rollInitiative` expects a combat to exist already.
- * Initiative is rolled once per fight rather than constantly, so one extra
- * confirmation is a fair price for landing in the tracker correctly.
+ * That dialog was kept at first on the belief that `rollInitiativeDialog` was
+ * the only entry point which files the result with the combat tracker. It is
+ * not: the dialog collects an advantage mode and then calls
+ * `rollInitiative({ createCombatants: true })` itself, and that is the method
+ * doing the real work. Since the sheet already knows the advantage mode, the
+ * dialog was collecting an answer it had been given.
  *
- * The sheet's roll mode is passed through so the dialog opens on the same
- * setting the rest of the sheet is using. dnd5e merges these over the values it
- * works out itself, so a mode set here wins — and without it the sheet would
- * claim advantage while the dialog in front of the player said Normal.
+ * Removing it also removes the last piece of desktop UI a player on a phone
+ * could reach. It rendered badly on iOS — the whole middle of the window, the
+ * formula and the situational bonus field, collapsed to nothing, leaving a
+ * title and three buttons — and rather than patch another package's layout
+ * blind, initiative now behaves like every other roll on the sheet: one tap.
+ *
+ * `createCombatants` adds the character to the encounter if they are not
+ * already in it. With no active combat, core warns the player and does nothing,
+ * which is the right outcome — a player cannot open an encounter.
  *
  * @param {Actor} actor
  * @param {string} [mode]  A ROLL_MODE value.
- * @returns {Promise<void|null>}
+ * @returns {Promise<Combat|null>}
  */
 export function rollInitiative(actor, mode = ROLL_MODE.NORMAL) {
-  return attempt(() => actor.rollInitiativeDialog(modeFlags(mode)), "initiative");
+  return attempt(
+    () => actor.rollInitiative({ createCombatants: true }, modeFlags(mode)),
+    "initiative"
+  );
 }
 
 /* -------------------------------------------- */

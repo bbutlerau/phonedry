@@ -255,37 +255,31 @@ test.describe("stats screen", () => {
     await context.close();
   });
 
-  test("initiative opens dnd5e's dialog at the sheet's roll mode", async ({ browser }) => {
+  test("initiative rolls without opening a Foundry dialog", async ({ browser }) => {
     const context = await browser.newContext(TOUCH);
     const page = await context.newPage();
 
     await joinGame(page);
     await reloadAt(page, PHONE_VIEWPORT);
 
-    await page.locator('[data-mode="advantage"]').click();
     await page.locator("[data-action='rollInitiative']").click();
 
-    const dialog = page.locator(".roll-configuration");
-    await expect(dialog).toBeVisible();
+    // The load-bearing assertion. Foundry's own dialogs cannot be shown to a
+    // player on a phone: every iOS browser is WebKit, and ApplicationV2 dialog
+    // content collapses there — the roll dialog lost its formula and bonus
+    // field, the same way the create-actor dialog loses most of its options in
+    // desktop Safari. Nothing on this sheet may depend on one.
+    await expect(page.locator(".roll-configuration")).toHaveCount(0);
+    await expect(page.locator("dialog.application")).toHaveCount(0);
 
-    // The sheet said advantage; the dialog must not open saying Normal.
-    // dnd5e does not mark the active mode on the buttons, so the formula it
-    // shows is the honest place to read it — "1d20adv + 3" rather than "1d20".
-    await expect(
-      dialog.locator(".formula, .dice-formula"),
-      "initiative dialog ignored the sheet's roll mode"
-    ).toContainText("adv");
+    // Proof it reached core's real initiative path rather than failing early:
+    // a player cannot open an encounter, so with no combat running core warns
+    // and stops. That warning is the observable end of the call.
+    await expect.poll(
+      () => page.evaluate(() => [...document.querySelectorAll("#notifications li")]
+        .map(n => n.innerText).join(" "))
+    ).toContain("Encounter");
 
-    // Everything a finger has to hit meets the same floor as the sheet.
-    const undersized = await dialog.locator("button").evaluateAll(
-      els => els
-        .filter(el => el.offsetParent !== null)
-        .map(el => ({ t: el.textContent.trim().slice(0, 20), h: el.getBoundingClientRect().height }))
-        .filter(el => el.h < 44)
-    );
-    expect(undersized).toEqual([]);
-
-    await page.keyboard.press("Escape");
     await context.close();
   });
 

@@ -52,9 +52,9 @@ All notable changes to Phonedry are recorded here. Versions follow
   button rather than by a minus sign, so "damage 5" and "heal 5" cannot be
   confused. The arithmetic is dnd5e's: temporary hit points absorb damage
   first, healing stops at the maximum, and damage stops at zero.
-- Initiative's dialog now opens on whatever the sheet's advantage selector is
-  set to, instead of contradicting it, and its buttons and close control are
-  brought up to the same 44px tap target the rest of the sheet holds to.
+- Initiative is a tap like every other roll, with no Foundry dialog involved.
+  It uses the sheet's advantage selector and files the result with the combat
+  tracker exactly as before.
 - Death saves appear on the sheet only while the character is at zero hit
   points, showing successes and failures as pips with a roll button.
 - Proficiency is shown as four distinct states — none, half, proficient and
@@ -75,6 +75,12 @@ All notable changes to Phonedry are recorded here. Versions follow
   browser and no world, so unlike the smoke tests they can run in CI.
 
 ### Fixed
+- Initiative opened Foundry's roll configuration dialog, which renders badly on
+  iOS: the whole middle of the window — the formula, the situational bonus
+  field and the roll mode select — collapsed to nothing, leaving a title and
+  three buttons. The dialog turned out to be avoidable entirely; it was
+  collecting an advantage mode the sheet already knew, then calling the method
+  that does the real work.
 - Turning Phonedry off left the canvas disabled. `core.noCanvas` persists in
   client storage, so a client that had run Phonedry once kept a mapless
   tabletop afterwards — the escape hatch delivered players from a broken sheet

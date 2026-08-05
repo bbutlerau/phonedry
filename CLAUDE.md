@@ -52,6 +52,16 @@ The two platforms fail differently, and both need testing:
   is in force.
 - **iOS is where the memory ceiling bites.** Android's limits are more generous,
   so a build that feels fine on a Pixel can still be killed on an iPhone.
+- **Foundry's own dialogs cannot be shown to a player on a phone.**
+  ApplicationV2 dialog content collapses in WebKit: the initiative roll dialog
+  lost its formula, situational bonus field and roll-mode select, leaving a
+  title and three buttons, and the create-actor dialog in desktop Safari shows
+  only one of its four actor types. Same failure, and it is Foundry's rather
+  than ours — but every browser on iOS is WebKit, including Chrome and Firefox,
+  so it is permanently in our path. Anything needing a choice from the player
+  gets a control Phonedry renders itself. Check for a system API that does the
+  work without the dialog before assuming one is required: initiative turned
+  out to have one.
 - **Long-press is not available as a gesture.** iOS claims a hold to start a
   text selection and raise its Copy / Look Up callout, which lands on top of
   whatever the app was doing. `preventDefault` on `contextmenu` does not stop
@@ -140,6 +150,15 @@ npm run test:e2e  # smoke tests against the live instance
 
 The unit tests cover the actor → view model mappers, use Node's built-in test
 runner rather than a framework, and are the part that can run in CI.
+
+The smoke tests run against both Chromium and WebKit, and the second one is
+not a formality. Every browser on iOS is WebKit, so half the target devices run
+an engine Chromium testing says nothing about — and the two worst bugs so far,
+the long-press that iOS turned into a text selection and the Foundry dialog
+that rendered with its middle collapsed, were both invisible in Chromium and
+both reached a real device first. WebKit here is not Safari and not iOS: no
+touch callout, no memory ceiling. It shares the engine, which is where layout
+bugs of this kind live. The iPad is still the final word.
 
 The smoke tests drive the real Foundry instance rather than a mock,
 deliberately: every bug so far has come from core behaving differently than
