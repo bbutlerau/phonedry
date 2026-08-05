@@ -26,3 +26,9 @@ dist/
 !.env.example
 *.key
 secrets/
+
+# Session handover notes. Local working state — what was done last, what is
+# next, and what to check on a device. Deliberately untracked: it is a running
+# scratchpad between sessions rather than documentation of the module, and it
+# would be noise in a public repository.
+session.md

@@ -1,5 +1,18 @@
 # CLAUDE.md — Project Memory & Working Agreement
 
+## Read `session.md` first
+
+Before anything else in a new session, read `session.md` in the repository root
+if it is there. It is the running handover: what was finished last, what is
+outstanding, what still needs checking on a real device, and which decisions
+were already made and should not be reopened.
+
+It is deliberately untracked — local working state rather than documentation of
+the module — so a fresh clone will not have one. Its absence is normal, not a
+problem to fix. Keep it current as work lands, and treat anything durable in it
+(an API constraint, a behaviour of Foundry) as belonging here in CLAUDE.md
+instead, where it survives.
+
 ## Learning mode
 
 Brad chose **"Claude writes it"** for this project: implement fully, but explain
@@ -121,6 +134,99 @@ The two platforms fail differently, and both need testing:
   gesture bars on Android — and both need `viewport-fit=cover` to report
   anything but zero.
 
+## What we have learned about Foundry and dnd5e
+
+Hard-won facts, each of which cost real time to establish. They are here rather
+than in a session note because they outlive any one piece of work.
+
+### Consequences of running without a canvas
+
+- **`game.user.targets` can never be populated.** Core's targeting reads
+  `canvas.tokens` and `canvas.scene`, so on a canvas-free client the target set
+  stays empty permanently. This is not cosmetic: dnd5e builds a chat card's
+  target list from that set, so every card the module produced named nobody.
+
+  The way through is that `Activity#use(usage, dialog, message)` merges the
+  `message` argument over its own defaults, so target descriptors can be handed
+  in as `data.flags.dnd5e.targets` in dnd5e's own shape — `{name, img, uuid,
+  ac}`. That restores target names, armour classes and per-target save buttons.
+  `Item#use` forwards all three arguments, so casting through the item works
+  the same way.
+- **Everything behind the map is still reachable.** Combatants, their tokens'
+  dispositions, actors and their armour classes are documents, so the combat
+  tracker is a complete substitute for picking tokens off a map.
+- **`user.broadcastActivity({targets})` needs no canvas to send**, and other
+  clients answer it by highlighting those tokens. It is best-effort only:
+  Foundry drops it when the sender is not viewing the same scene, and a
+  canvas-free client cannot confirm it landed.
+
+### Applying effects
+
+- **dnd5e refuses unless you are the GM or own the target.**
+  `_applyEffectToActor` throws on anything else, and there is no GM relay socket
+  in the system to fall back on. A player on a phone typically owns none of the
+  enemies and none of the other characters, so applying effects from the phone
+  is not generally possible.
+- **A save-based spell's effect applies to whoever fails the save**, which is
+  why dnd5e puts a button on the card rather than applying on use. Applying at
+  cast time would be a rules error, not merely eager.
+- Brad's decision: effect application stays entirely with the GM's chat card.
+  Do not build auto-application or a GM relay without asking again.
+
+### ApplicationV2
+
+- **A part may declare `scrollable: [selector]`**, and core preserves those
+  scroll positions across a re-render. `""` means the part's own root element.
+  Without it, anything that re-renders the sheet — preparing a spell, taking
+  damage — throws the list back to the top.
+
+  Preserving is only right when the same list is being rebuilt. When the content
+  changes identity — a new tab, a new search, a re-sort — reset to the top, or
+  the player lands halfway down a list they have not seen the top of.
+- **Each part still renders exactly one top-level element.** See the note under
+  the design constraint; this remains the most common cause of a blank screen.
+
+### Enriched text
+
+- **Content links open a desktop document sheet.** `a.content-link[data-uuid]`
+  is answered by Foundry opening that document's own application, which on a
+  phone lands with its close control off the edge of the screen — and with the
+  sidebar suppressed there is no way back short of reloading. Intercept the
+  click on the shell root and answer it in the module's own panel. Both
+  `preventDefault` and `stopPropagation` are needed; the handler that opens the
+  sheet is at document level.
+- **An item keeps its text in `system.description.value`; a journal page in
+  `text.content`.** Skills and conditions point at rules pages through
+  `CONFIG.DND5E.skills[key].reference` and `conditionTypes[key].reference`, so
+  holding one can show the actual rule.
+- **An activity has no description of its own** — only an empty `chatFlavor` —
+  so an action row's description is the item's.
+- **`item.labels` already carries display strings** for activation, range,
+  target, duration, components, materials, `toHit` and `damages`. Use them
+  rather than deriving; they vary by rules version and dnd5e has already done
+  the work.
+
+### Conditions and effects
+
+- **`CONFIG.DND5E.conditionTypes` entries flagged `pseudo` are not conditions**
+  in the rules — they are internal markers. dnd5e filters them out of its own
+  effects tab and so should we.
+- **`Actor#toggleStatusEffect(id, {active})` is the only correct route.** It
+  creates the effect with the right static id, so dnd5e, the token HUD and other
+  modules recognise it. `actor.statuses` is then the honest answer to "is this
+  on", including reading false for a disabled effect.
+- **Exhaustion is a level, not a switch** — `CONFIG.DND5E.conditionTypes
+  .exhaustion.levels` — and writing `system.attributes.exhaustion` is the whole
+  of the work; dnd5e derives the penalties.
+- **`effect.isTemporary` separates** something cast on you from a permanent
+  trait, which is the line worth drawing on a status screen.
+
+### Rests
+
+- `Actor#shortRest()` / `longRest()` open dnd5e's rest dialog, and that dialog
+  is *where hit dice are spent*. Keep it. Hit dice live at
+  `system.attributes.hd` with `value`, `max` and `largestAvailable`.
+
 ## Where to look things up
 
 For questions about **Foundry's behaviour**, read the bundled source in the
@@ -229,6 +335,24 @@ and a world.
 They join as the player `phonedrt`, who has the level 7 cleric "phonedry test"
 assigned. Override with `PHONEDRY_TEST_USER`. Joining as a GM with no assigned
 character only ever exercises the empty state.
+
+Things that have caught out the smoke tests before:
+
+- **A spell posts no chat card until dnd5e's usage dialog is confirmed.** Any
+  test asserting on a spell's card has to click `[data-action="use"]` in
+  `dialog.application.activity-usage` first.
+- **The description panel covers the screen.** A long press aimed at a row
+  underneath lands on the backdrop instead, and reads whatever was already
+  open. Close it between holds.
+- **Headings are uppercased by the stylesheet, not the data.** Compare them
+  case-insensitively.
+- **Asset 404s are world data, not module faults.** `collectErrors` ignores
+  them deliberately: actors routinely point at artwork that is not installed,
+  and the module's answer is the silhouette fallback rather than a passing
+  console.
+- **Never run two suites at once.** They share one Foundry instance, and the
+  contention makes unrelated tests crawl from eight seconds to over a minute
+  and time out on the join page. Check nothing is already running first.
 
 A test that passes alone but fails in the suite is usually persisted client
 state leaking between contexts — `core.noCanvas` in particular survives a page
