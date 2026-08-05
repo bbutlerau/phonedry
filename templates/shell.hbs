@@ -2,6 +2,12 @@
   M1 status panel. This exists to prove the boot path worked on a real device:
   if the canvas is off and this is the only thing on screen, the design holds.
   It is replaced by the sheet frame and tab bar in M2.
+
+  CONSTRAINT: this template must render MORE THAN ONE top-level element. The
+  part is declared with `root: true`, and core's #parsePartHTML unwraps a lone
+  top-level element — inserting its children and discarding the element itself.
+  Two or more siblings are inserted as-is, which is what we want. Keeping the
+  header and the body as separate siblings satisfies this naturally.
 --}}
 <header class="phonedry-shell__header">
   <h1>Phonedry</h1>

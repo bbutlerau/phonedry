@@ -26,8 +26,23 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
     }
   };
 
+  /**
+   * `root: true` is not optional here, and the failure mode is nasty.
+   *
+   * Without it, HandlebarsApplicationMixin requires the part to render exactly
+   * one top-level element and throws otherwise. The throw happens inside the
+   * render promise, so nothing is inserted into the DOM and — because the
+   * canvas has already been disabled by then — the player is left staring at a
+   * blank screen with no visible error.
+   *
+   * With `root: true` the part's children are placed directly into the
+   * application element, and multiple top-level elements are allowed. The
+   * corresponding constraint is documented in shell.hbs: the template must
+   * render more than one top-level element, because core unwraps a lone one.
+   */
   static PARTS = {
     body: {
+      root: true,
       template: `modules/${MODULE_ID}/templates/shell.hbs`
     }
   };

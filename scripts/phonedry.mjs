@@ -14,6 +14,7 @@ import { MODULE_ID } from "./constants.mjs";
 import { registerSettings } from "./settings.mjs";
 import { shouldUseMobileClient } from "./detect.mjs";
 import { boot } from "./boot.mjs";
+import { renderFatalError } from "./fallback.mjs";
 import { PhonedryShell } from "./sheet/shell.mjs";
 
 /**
@@ -61,11 +62,21 @@ Hooks.once("setup", () => {
  * "ready" is the earliest point at which `game.user.character` is populated, so
  * it is the earliest point worth rendering a character sheet.
  */
-Hooks.once("ready", () => {
+Hooks.once("ready", async () => {
   if ( !active ) return;
 
-  shell = new PhonedryShell();
-  shell.render({ force: true });
+  // Rendering is awaited inside a try/catch rather than left to float. An
+  // ApplicationV2 render failure surfaces as a rejected promise, and an
+  // unhandled rejection here is invisible: the tabletop is already gone, so the
+  // player sees an empty page and nothing explains why.
+  try {
+    shell = new PhonedryShell();
+    await shell.render({ force: true });
+  } catch ( error ) {
+    shell = null;
+    renderFatalError(error);
+    return;
+  }
 
   console.log(
     `${MODULE_ID} | ready — Foundry ${game.version}, ${game.system.id} ${game.system.version}`

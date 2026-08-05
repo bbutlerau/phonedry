@@ -48,15 +48,41 @@ export function isTabletViewport() {
 }
 
 /**
+ * Read the `?phonedry=` URL override, if present.
+ *
+ * This is the escape hatch, and it exists because of how badly Phonedry can
+ * strand someone. Once the boot path runs, the sidebar is gone — and with it
+ * every route to the settings menu. If the sheet then fails to render, a player
+ * is left on a blank screen with no way to turn the module off and no way back
+ * to the tabletop, on a device where clearing site data is the only remaining
+ * option.
+ *
+ * Appending `?phonedry=off` to the URL sidesteps the module entirely for that
+ * page load, which is something a player can do from a phone unaided.
+ *
+ * @returns {boolean|null} True or false to force a decision, null if unset.
+ */
+export function getUrlOverride() {
+  const value = new URLSearchParams(window.location.search).get("phonedry");
+  if ( ["off", "0", "false"].includes(value) ) return false;
+  if ( ["on", "1", "true"].includes(value) ) return true;
+  return null;
+}
+
+/**
  * Should this client load the Phonedry sheet instead of the tabletop?
  *
- * The user's setting always wins over detection. Detection is a convenience so
- * that players don't have to configure anything; it is not an authority, and
- * being wrong about someone's device should never leave them stuck.
+ * Precedence is URL override, then the user's setting, then detection.
+ * Detection is a convenience so that players don't have to configure anything;
+ * it is not an authority, and being wrong about someone's device should never
+ * leave them stuck.
  *
  * @returns {boolean}
  */
 export function shouldUseMobileClient() {
+  const override = getUrlOverride();
+  if ( override !== null ) return override;
+
   switch (getMode()) {
     case MODE.ALWAYS:
       return true;

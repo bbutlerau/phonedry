@@ -14,3 +14,15 @@ All notable changes to Phonedry are recorded here. Versions follow
 - `viewport-fit=cover` is appended to Foundry's viewport meta so CSS safe-area
   insets report real values on notched and cutout displays.
 - Client setting to force the mobile client on or off, overriding detection.
+- `?phonedry=off` URL override, which bypasses the module for a single page
+  load. This is the only route back to the tabletop once the sidebar is
+  suppressed, so it matters on a phone where clearing site data is otherwise the
+  only recourse.
+- A plain-DOM failure panel shown if the sheet cannot render, replacing what was
+  previously a silent blank screen.
+
+### Fixed
+- The shell rendered nothing at all: its Handlebars part declared two top-level
+  elements without `root: true`, which made core throw inside the render
+  promise. Because the canvas was disabled first, the failure presented as a
+  blank screen rather than an error.
