@@ -52,16 +52,35 @@ The two platforms fail differently, and both need testing:
   is in force.
 - **iOS is where the memory ceiling bites.** Android's limits are more generous,
   so a build that feels fine on a Pixel can still be killed on an iPhone.
-- **Foundry's own dialogs cannot be shown to a player on a phone.**
-  ApplicationV2 dialog content collapses in WebKit: the initiative roll dialog
-  lost its formula, situational bonus field and roll-mode select, leaving a
-  title and three buttons, and the create-actor dialog in desktop Safari shows
-  only one of its four actor types. Same failure, and it is Foundry's rather
-  than ours — but every browser on iOS is WebKit, including Chrome and Firefox,
-  so it is permanently in our path. Anything needing a choice from the player
-  gets a control Phonedry renders itself. Check for a system API that does the
-  work without the dialog before assuming one is required: initiative turned
-  out to have one.
+- **Foundry's own dialogs render badly in WebKit.** ApplicationV2 dialog content
+  collapses: the initiative roll dialog lost its formula, situational bonus
+  field and roll-mode select, leaving a title and three buttons, and the
+  create-actor dialog in desktop Safari shows only one of its four actor types.
+  Same failure, and it is Foundry's rather than ours — but every browser on iOS
+  is WebKit, including Chrome and Firefox, so it is permanently in our path.
+
+  This is a problem to weigh, not a rule to apply. Work through it in order:
+
+  1. **Is there an API that skips the dialog?** Initiative had one — the dialog
+     was collecting an advantage mode the sheet already knew, then calling the
+     method that does the real work. Cheapest possible outcome, so look here
+     first.
+  2. **Would rebuilding it mean reimplementing dnd5e's rules?** If so, stop and
+     raise it. dnd5e's activity usage dialog handles spell slot selection,
+     upcasting, and consumption of uses, resources and materials — that is a
+     large amount of rules logic, and a hand-built version of it would be
+     wrong in ways nobody notices until a session. The same goes for resting
+     and hit dice. A dialog that needs CSS coaxing is a far better trade than
+     owning that logic ourselves.
+  3. **Can the dialog be fixed?** WebKit is in the smoke tests now, so this can
+     actually be checked rather than guessed at, which was not true when the
+     initiative dialog was removed. A scoped stylesheet fix under
+     `.phonedry-active` leaves desktop players untouched and is worth trying
+     before anything is rewritten.
+
+  Build from scratch only when the dialog is thin — a choice the sheet already
+  knows the answer to, or a confirmation. Say which of these applies before
+  writing the code.
 - **Long-press is not available as a gesture.** iOS claims a hold to start a
   text selection and raise its Copy / Look Up callout, which lands on top of
   whatever the app was doing. `preventDefault` on `contextmenu` does not stop
