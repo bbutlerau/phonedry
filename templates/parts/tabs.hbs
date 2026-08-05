@@ -1,0 +1,18 @@
+{{!--
+  The tab bar. Sits at the very bottom, below the roll log, because the bottom
+  of the screen is where a thumb rests and primary navigation belongs under it.
+
+  Rendered from the TABS list rather than written out, so a section cannot
+  appear here before it exists.
+
+  CONSTRAINT: exactly one top-level element. See the note in header.hbs.
+--}}
+<nav class="phonedry-tabs" aria-label="{{localize 'PHONEDRY.Tabs.Label'}}">
+  {{#each tabs}}
+    <button type="button" class="phonedry-tabs__tab" data-action="setTab" data-tab="{{this.id}}"
+            aria-current="{{#if this.active}}page{{else}}false{{/if}}">
+      <i class="fa-solid {{this.icon}}" aria-hidden="true"></i>
+      <span class="phonedry-tabs__label">{{localize this.label}}</span>
+    </button>
+  {{/each}}
+</nav>

@@ -60,6 +60,21 @@
       "None": "No character is assigned to {user}, and you do not own one in this world. Ask your GM to assign you a character.",
       "Ambiguous": "You own more than one character and none has been assigned to you, so Phonedry does not know which to show. Ask your GM to assign one of these:",
       "Escape": "Open the full tabletop instead"
+    },
+    "Tabs": {
+      "Label": "Character sheet sections",
+      "Stats": "Stats",
+      "Spells": "Spells"
+    },
+    "Spells": {
+      "Concentration": "Conc.",
+      "Failed": "Phonedry could not use {what}. See the console for details.",
+      "NoneBody": "This character has no spells. Ask your GM to add some, or add them from the desktop client.",
+      "NoneHeading": "No spells",
+      "PrepareAria": "Prepare {name}",
+      "Preparation": "the preparation change",
+      "Ritual": "Ritual",
+      "Slots": "Spell slots"
     }
   }
 }

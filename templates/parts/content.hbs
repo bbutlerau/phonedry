@@ -1,0 +1,15 @@
+{{!--
+  The scrolling area between the header and the roll log. Every tab renders
+  inside it, so the scroll behaviour, padding and safe-area handling are
+  written once rather than repeated per section.
+
+  The active tab's template is chosen by the shell and included as a dynamic
+  partial. Only the visible tab is built — rendering all of them and hiding the
+  inactive ones would mean laying out a full spell list on a phone every time
+  someone glances at their skills.
+
+  CONSTRAINT: exactly one top-level element. See the note in header.hbs.
+--}}
+<div class="phonedry-content" data-scroll data-active-tab="{{tab}}">
+  {{> (lookup . "tabTemplate")}}
+</div>

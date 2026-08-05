@@ -81,6 +81,15 @@ All notable changes to Phonedry are recorded here. Versions follow
   into two columns, which fits the whole sheet on screen without scrolling.
 - The smoke tests run against WebKit as well as Chromium. Every browser on iOS
   is WebKit, so half the target devices were running an engine nothing tested.
+- A tab bar at the bottom of the sheet for moving between sections. A visible
+  bar rather than an edge swipe: iOS Safari uses a swipe from the left edge for
+  back and the right edge for forward, Android's system back gesture claims
+  both edges too, and a web page cannot reliably prevent either — losing that
+  race navigates away from the game entirely.
+- Spells screen: slots at the top, then spells grouped by level and sorted by
+  name within each. Preparation toggles for spells the character actually
+  prepares, casting through dnd5e's own activity pipeline, and badges for
+  concentration, ritual and limited uses.
 - Unit tests for the actor-to-view-model mappers. These need no Foundry, no
   browser and no world, so unlike the smoke tests they can run in CI.
 

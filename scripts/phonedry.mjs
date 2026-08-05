@@ -10,7 +10,7 @@
  * scripts/boot.mjs for the full sequence and why each step lands where it does.
  */
 
-import { MODULE_ID } from "./constants.mjs";
+import { MODULE_ID, TABS } from "./constants.mjs";
 import { registerSettings } from "./settings.mjs";
 import { shouldUseMobileClient } from "./detect.mjs";
 import { boot, restoreCanvas } from "./boot.mjs";
@@ -41,6 +41,15 @@ let active = false;
  */
 Hooks.once("init", () => {
   registerSettings();
+
+  // The tab bodies are pulled in by content.hbs as dynamic partials, chosen at
+  // render time from the active tab. Handlebars can only resolve a partial that
+  // has already been registered, and `loadTemplates` is what registers one
+  // under its path — so this has to happen before the first render, not on
+  // demand when a tab is opened.
+  foundry.applications.handlebars.loadTemplates(
+    TABS.map(tab => `modules/${MODULE_ID}/templates/tabs/${tab.id}.hbs`)
+  );
 });
 
 /* -------------------------------------------- */

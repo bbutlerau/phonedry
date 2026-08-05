@@ -26,6 +26,28 @@ export const SETTINGS = {
 };
 
 /**
+ * The sheet's sections, in the order they appear in the tab bar.
+ *
+ * Only sections that are actually built belong here. The bar is generated from
+ * this list, so adding an entry before its screen exists would put a tab on
+ * screen that does nothing — and a control that does nothing is worse on a
+ * phone than a missing one, because there is no tooltip to explain it.
+ *
+ * Navigation is a visible bar rather than an edge swipe on purpose. iOS Safari
+ * uses a swipe from the left edge for back and the right edge for forward, and
+ * Android's system back gesture claims both edges too; a web page cannot
+ * reliably prevent either. An edge-swipe drawer would compete with them, and
+ * the failure is losing the page — a full Foundry reload, mid-combat.
+ */
+export const TABS = [
+  { id: "stats", label: "PHONEDRY.Tabs.Stats", icon: "fa-shield-halved" },
+  { id: "spells", label: "PHONEDRY.Tabs.Spells", icon: "fa-book-sparkles" }
+];
+
+/** The section shown on first load. */
+export const DEFAULT_TAB = "stats";
+
+/**
  * Viewport width (CSS pixels) at or above which the tablet layout applies.
  * 768 is the conventional tablet breakpoint and matches an iPad in portrait.
  */

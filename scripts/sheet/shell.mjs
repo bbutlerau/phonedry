@@ -10,10 +10,12 @@
  * there is exactly one thing on screen and it occupies all of it.
  */
 
-import { MODULE_ID } from "../constants.mjs";
+import { MODULE_ID, TABS, DEFAULT_TAB } from "../constants.mjs";
 import { isTabletViewport } from "../detect.mjs";
 import { resolveCharacter } from "../data/character.mjs";
 import { buildStatsView } from "../data/stats.mjs";
+import { buildSpellsView } from "../data/spells.mjs";
+import { castSpell, setPrepared } from "../spells.mjs";
 import {
   ROLL_MODE, rollAbilityCheck, rollSavingThrow, rollSkill,
   rollDeathSave, rollInitiative, rollTypedCommand
@@ -34,18 +36,21 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
     },
     actions: {
       applyHp: PhonedryShell.#onApplyHp,
+      castSpell: PhonedryShell.#onCastSpell,
       roll: PhonedryShell.#onRoll,
       rollTyped: PhonedryShell.#onRollTyped,
       rollInitiative: PhonedryShell.#onRollInitiative,
       setRollMode: PhonedryShell.#onSetRollMode,
+      setTab: PhonedryShell.#onSetTab,
       stepHp: PhonedryShell.#onStepHp,
       toggleHpEditor: PhonedryShell.#onToggleHpEditor,
+      togglePrepared: PhonedryShell.#onTogglePrepared,
       toggleRollLog: PhonedryShell.#onToggleRollLog
     }
   };
 
   /**
-   * Two parts, each rendering exactly one top-level element.
+   * Each part renders exactly one top-level element.
    *
    * That constraint is core's, not ours: `#parsePartHTML` throws unless a part
    * produces a single root element, and the throw happens inside the render
@@ -53,18 +58,25 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
    * error, which is precisely how M1 failed. Each template here carries a
    * comment saying so.
    *
-   * Splitting header from content is also what makes a hit point change cheap:
-   * `render({ parts: ["header"] })` leaves the skills list untouched instead of
-   * rebuilding several dozen rows on a phone GPU.
+   * Splitting them up is also what keeps re-renders cheap: a hit point change
+   * rebuilds the header alone, a roll rebuilds the log alone, and neither
+   * touches a list of several dozen rows on a phone GPU.
    */
   static PARTS = {
     header: { template: `modules/${MODULE_ID}/templates/parts/header.hbs` },
-    content: { template: `modules/${MODULE_ID}/templates/parts/stats.hbs` },
+
+    // One content part for every tab. The active tab's body is included as a
+    // dynamic partial, so only the visible section is built — rendering a full
+    // spell list behind the skills screen would cost a phone real time.
+    content: { template: `modules/${MODULE_ID}/templates/parts/content.hbs` },
 
     // Below the content, because it sits at the bottom of the screen where a
     // thumb is. Its own part so a roll can refresh it without rebuilding the
     // skills list.
     log: { template: `modules/${MODULE_ID}/templates/parts/roll-log.hbs` },
+
+    // Below the log, at the very bottom, where a thumb rests.
+    tabs: { template: `modules/${MODULE_ID}/templates/parts/tabs.hbs` },
 
     // Always rendered, shown only by a media query. Whether a phone is being
     // held sideways is not something the shell should have to track.
@@ -125,6 +137,22 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
    * @type {object[]}
    */
   #rollLog = [];
+
+  /**
+   * Which section is showing.
+   *
+   * Not persisted: a session starts on the stats screen, which is where a
+   * player looks first, and restoring a tab from three days ago would be more
+   * surprising than useful.
+   *
+   * @type {string}
+   */
+  #tab = DEFAULT_TAB;
+
+  /** The active tab. Exposed for the smoke tests and the console. */
+  get tab() {
+    return this.#tab;
+  }
 
   /** Whether the roll history is expanded. @type {boolean} */
   #rollLogOpen = false;
@@ -220,6 +248,9 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
     return Object.assign(context, {
       isTablet: isTabletViewport(),
       actor,
+      tab: this.#tab,
+      tabTemplate: `modules/${MODULE_ID}/templates/tabs/${this.#tab}.hbs`,
+      tabs: TABS.map(tab => ({ ...tab, active: tab.id === this.#tab })),
       rollMode: this.#rollMode,
       rollLog: this.#rollLog,
       rollLogOpen: this.#rollLogOpen,
@@ -229,6 +260,7 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       // the actor, so an actor that somehow fails to map still lands on the
       // empty state instead of throwing inside Handlebars.
       stats: actor ? buildStatsView(actor, CONFIG.DND5E) : null,
+      spells: actor ? buildSpellsView(actor, CONFIG.DND5E) : null,
 
       empty: actor ? null : {
         reason,
@@ -490,6 +522,47 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   static async #onRollTyped() {
     if ( !this.actor ) return;
     await rollTypedCommand(this.actor, this.#formula);
+  }
+
+  /**
+   * Show or hide the roll history.
+   *
+   * Re-rendered rather than toggled in the DOM, because the bar itself changes
+   * with the state: it shows the most recent roll while collapsed and a heading
+   * while open, so that the list underneath does not repeat it. Only the log
+   * part is rebuilt.
+   *
+   * @this {PhonedryShell}
+   */
+  static #onSetTab(event, target) {
+    const tab = target.dataset.tab;
+    if ( !tab || (tab === this.#tab) ) return;
+
+    this.#tab = tab;
+
+    // The header does not change with the tab, and rebuilding it would drop an
+    // open hit point editor for no reason.
+    this.render({ parts: ["content", "tabs"] });
+  }
+
+  /**
+   * Cast a spell.
+   *
+   * @this {PhonedryShell}
+   */
+  static #onCastSpell(event, target) {
+    const spell = this.actor?.items.get(target.dataset.spellId);
+    if ( spell ) castSpell(spell);
+  }
+
+  /**
+   * Prepare or unprepare a spell.
+   *
+   * @this {PhonedryShell}
+   */
+  static #onTogglePrepared(event, target) {
+    const spell = this.actor?.items.get(target.dataset.spellId);
+    if ( spell ) setPrepared(spell, target.getAttribute("aria-pressed") !== "true");
   }
 
   /**

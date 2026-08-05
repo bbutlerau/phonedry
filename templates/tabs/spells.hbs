@@ -1,0 +1,88 @@
+{{!--
+  The spells screen: slots at the top, then spells grouped by level.
+
+  Level order rather than alphabetical, which is the opposite of the skills
+  list and deliberate: a spell is chosen by what it costs first and what it does
+  second. Within a level, alphabetical — the same reason as skills, that a list
+  on a phone needs an order a finger can navigate.
+
+  A tab body, included by content.hbs. No wrapper and no single-root
+  constraint; those belong to the part.
+--}}
+{{#if spells.empty}}
+
+  <section class="phonedry-empty">
+    <h2>{{localize "PHONEDRY.Spells.NoneHeading"}}</h2>
+    <p>{{localize "PHONEDRY.Spells.NoneBody"}}</p>
+  </section>
+
+{{else}}
+
+  {{#if spells.slots.length}}
+    {{!-- Slots first and always visible: it is the question asked before every
+          cast, and scrolling to find it would be the wrong way round. --}}
+    <section class="phonedry-section">
+      <h2 class="phonedry-section__heading">{{localize "PHONEDRY.Spells.Slots"}}</h2>
+      <ul class="phonedry-slots">
+        {{#each spells.slots}}
+          <li class="phonedry-slot {{#unless this.value}}phonedry-slot--spent{{/unless}}">
+            <span class="phonedry-slot__level">{{this.label}}</span>
+            <span class="phonedry-slot__count">{{this.value}}<span class="phonedry-slot__max">/{{this.max}}</span></span>
+          </li>
+        {{/each}}
+      </ul>
+    </section>
+  {{/if}}
+
+  {{#each spells.groups}}
+    <section class="phonedry-section">
+      <h2 class="phonedry-section__heading">
+        {{this.label}}
+        {{#if this.slots}}
+          <span class="phonedry-section__count">{{this.slots.value}}/{{this.slots.max}}</span>
+        {{/if}}
+      </h2>
+
+      <ul class="phonedry-spells">
+        {{#each this.spells}}
+          <li class="phonedry-spell {{#unless this.prepared}}phonedry-spell--unprepared{{/unless}}">
+
+            {{!-- The preparation toggle is a separate target from the spell
+                  itself, because preparing and casting are different actions
+                  and a phone has no right-click to tell them apart. Spells
+                  that cannot be prepared get no control rather than a disabled
+                  one — there is no tooltip on a phone to explain a dead
+                  checkbox. --}}
+            {{#if this.preparable}}
+              <button type="button" class="phonedry-spell__prepare"
+                      data-action="togglePrepared" data-spell-id="{{this.id}}"
+                      aria-pressed="{{#if this.prepared}}true{{else}}false{{/if}}"
+                      aria-label="{{localize 'PHONEDRY.Spells.PrepareAria' name=this.name}}">
+                <span class="phonedry-pip {{#if this.prepared}}phonedry-prof--proficient{{/if}}"></span>
+              </button>
+            {{else}}
+              <span class="phonedry-spell__prepare phonedry-spell__prepare--fixed" aria-hidden="true"></span>
+            {{/if}}
+
+            <button type="button" class="phonedry-spell__cast"
+                    data-action="castSpell" data-spell-id="{{this.id}}">
+              <span class="phonedry-spell__name">{{this.name}}</span>
+              <span class="phonedry-spell__meta">
+                {{#if this.activation}}{{this.activation}}{{/if}}
+                {{#if this.range}} · {{this.range}}{{/if}}
+                {{#if this.concentration}} · {{localize "PHONEDRY.Spells.Concentration"}}{{/if}}
+                {{#if this.ritual}} · {{localize "PHONEDRY.Spells.Ritual"}}{{/if}}
+              </span>
+            </button>
+
+            {{#if this.uses}}
+              <span class="phonedry-spell__uses">{{this.uses.value}}/{{this.uses.max}}</span>
+            {{/if}}
+
+          </li>
+        {{/each}}
+      </ul>
+    </section>
+  {{/each}}
+
+{{/if}}
