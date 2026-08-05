@@ -67,13 +67,23 @@
       "Spells": "Spells"
     },
     "Spells": {
+      "Add": "Add spells",
+      "AddFailed": "Phonedry could not add that spell. See the console for details.",
+      "Added": "{name} added.",
+      "AlreadyKnown": "Known",
+      "CloseBrowser": "Close",
       "Concentration": "Conc.",
       "Failed": "Phonedry could not use {what}. See the console for details.",
-      "NoneBody": "This character has no spells. Ask your GM to add some, or add them from the desktop client.",
+      "MoreResults": "Showing {shown} of {total}. Keep typing to narrow it down.",
+      "NoList": "No spell list is available for this character's class.",
+      "NoMatches": "No spells match that search.",
+      "NoneBodyAdd": "This character has no spells yet. Tap Add spells to choose some.",
       "NoneHeading": "No spells",
-      "PrepareAria": "Prepare {name}",
       "Preparation": "the preparation change",
+      "PrepareAria": "Prepare {name}",
       "Ritual": "Ritual",
+      "SearchLabel": "Search spells",
+      "SearchPlaceholder": "Search spells",
       "Slots": "Spell slots"
     }
   }

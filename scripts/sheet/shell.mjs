@@ -16,6 +16,8 @@ import { resolveCharacter } from "../data/character.mjs";
 import { buildStatsView } from "../data/stats.mjs";
 import { buildSpellsView } from "../data/spells.mjs";
 import { castSpell, setPrepared } from "../spells.mjs";
+import { addSpell, getAvailableSpells, ownedSpellIds } from "../spell-browser.mjs";
+import { searchSpells } from "../data/spell-browser.mjs";
 import {
   ROLL_MODE, rollAbilityCheck, rollSavingThrow, rollSkill,
   rollDeathSave, rollInitiative, rollTypedCommand
@@ -35,11 +37,14 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       positioned: false
     },
     actions: {
+      addSpell: PhonedryShell.#onAddSpell,
       applyHp: PhonedryShell.#onApplyHp,
       castSpell: PhonedryShell.#onCastSpell,
       roll: PhonedryShell.#onRoll,
       rollTyped: PhonedryShell.#onRollTyped,
       rollInitiative: PhonedryShell.#onRollInitiative,
+      closeSpellBrowser: PhonedryShell.#onCloseSpellBrowser,
+      openSpellBrowser: PhonedryShell.#onOpenSpellBrowser,
       setRollMode: PhonedryShell.#onSetRollMode,
       setTab: PhonedryShell.#onSetTab,
       stepHp: PhonedryShell.#onStepHp,
@@ -77,6 +82,9 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
 
     // Below the log, at the very bottom, where a thumb rests.
     tabs: { template: `modules/${MODULE_ID}/templates/parts/tabs.hbs` },
+
+    // A full-screen overlay, hidden until asked for.
+    browser: { template: `modules/${MODULE_ID}/templates/parts/spell-browser.hbs` },
 
     // Always rendered, shown only by a media query. Whether a phone is being
     // held sideways is not something the shell should have to track.
@@ -157,6 +165,23 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   /** Whether the roll history is expanded. @type {boolean} */
   #rollLogOpen = false;
 
+  /** Whether the spell browser is showing. @type {boolean} */
+  #browserOpen = false;
+
+  /** What is typed in the spell search field. @type {string} */
+  #browserQuery = "";
+
+  /**
+   * Compendium index entries for every spell this character can learn.
+   *
+   * Read once when the browser is first opened and kept for the session. The
+   * indexes themselves are dnd5e's and already in memory, so this is only
+   * avoiding the work of walking the registry on every keystroke.
+   *
+   * @type {object[]|null}
+   */
+  #browserEntries = null;
+
   /**
    * What is currently typed in the formula field.
    *
@@ -213,8 +238,39 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   #onFormulaInput = event => {
     if ( event.target.classList.contains("phonedry-log__formula-input") ) {
       this.#formula = event.target.value;
+      return;
+    }
+
+    if ( event.target.classList.contains("phonedry-browser__search") ) {
+      this.#browserQuery = event.target.value;
+
+      // Debounced, because this re-renders a list of up to forty rows and a
+      // phone keyboard produces keystrokes faster than that is worth doing.
+      this.#searchDebounced();
     }
   };
+
+  /**
+   * Re-render the browser after typing settles.
+   *
+   * The field keeps focus across the render because the render replaces the
+   * list, not the input — but the input's value comes from state, so it has to
+   * be mirrored above before this runs.
+   */
+  #searchDebounced = foundry.utils.debounce(() => {
+    if ( !this.#browserOpen ) return;
+
+    const field = this.element.querySelector(".phonedry-browser__search");
+    const start = field?.selectionStart;
+
+    this.render({ parts: ["browser"] });
+
+    const refocused = this.element.querySelector(".phonedry-browser__search");
+    if ( refocused && (document.activeElement !== refocused) ) {
+      refocused.focus();
+      if ( start != null ) refocused.setSelectionRange(start, start);
+    }
+  }, 200);
 
   /**
    * Roll on Enter.
@@ -261,6 +317,7 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       // empty state instead of throwing inside Handlebars.
       stats: actor ? buildStatsView(actor, CONFIG.DND5E) : null,
       spells: actor ? buildSpellsView(actor, CONFIG.DND5E) : null,
+      browser: this.#prepareBrowser(actor),
 
       empty: actor ? null : {
         reason,
@@ -268,6 +325,28 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
         candidates: candidates.map(a => ({ id: a.id, name: a.name }))
       }
     });
+  }
+
+  /**
+   * The spell browser's context.
+   *
+   * Search runs here rather than in the template because it is a filter over a
+   * few hundred entries, and Handlebars is the wrong place for that.
+   *
+   * @param {Actor|null} actor
+   * @returns {object}
+   */
+  #prepareBrowser(actor) {
+    if ( !this.#browserOpen || !actor ) {
+      return { open: false, query: this.#browserQuery, results: [], total: 0, truncated: false };
+    }
+
+    const search = searchSpells(this.#browserEntries ?? [], {
+      query: this.#browserQuery,
+      owned: ownedSpellIds(actor)
+    });
+
+    return { open: true, query: this.#browserQuery, ...search };
   }
 
   /* -------------------------------------------- */
@@ -563,6 +642,60 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   static #onTogglePrepared(event, target) {
     const spell = this.actor?.items.get(target.dataset.spellId);
     if ( spell ) setPrepared(spell, target.getAttribute("aria-pressed") !== "true");
+  }
+
+  /**
+   * Show or hide the roll history.
+   *
+   * Re-rendered rather than toggled in the DOM, because the bar itself changes
+   * with the state: it shows the most recent roll while collapsed and a heading
+   * while open, so that the list underneath does not repeat it. Only the log
+   * part is rebuilt.
+   *
+   * @this {PhonedryShell}
+   */
+  static #onOpenSpellBrowser() {
+    if ( !this.actor ) return;
+
+    // Read once per session. Walking the registry is cheap, but not cheap
+    // enough to repeat on every keystroke.
+    this.#browserEntries ??= getAvailableSpells(this.actor);
+
+    this.#browserOpen = true;
+    this.#browserQuery = "";
+    this.render({ parts: ["browser"] });
+
+    // Focus after the render that builds the field, so the keyboard comes up
+    // ready to type rather than after a second tap.
+    this.element.querySelector(".phonedry-browser__search")?.focus();
+  }
+
+  /**
+   * Close the spell browser.
+   *
+   * @this {PhonedryShell}
+   */
+  static #onCloseSpellBrowser() {
+    this.#browserOpen = false;
+    this.render({ parts: ["browser"] });
+  }
+
+  /**
+   * Add the tapped spell to the character.
+   *
+   * The browser stays open: adding spells is something done in a run, at level
+   * up or after a long rest, and closing after each one would mean reopening
+   * and retyping.
+   *
+   * @this {PhonedryShell}
+   */
+  static async #onAddSpell(event, target) {
+    if ( !this.actor ) return;
+    await addSpell(this.actor, target.dataset.uuid);
+
+    // The spell list behind the browser is now stale, and so is the browser's
+    // own "already known" marking.
+    this.render({ parts: ["content", "browser"] });
   }
 
   /**

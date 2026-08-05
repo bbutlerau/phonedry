@@ -9,11 +9,18 @@
   A tab body, included by content.hbs. No wrapper and no single-root
   constraint; those belong to the part.
 --}}
+{{!-- Adding spells is the one thing on this screen that is not about the
+      spells already on it, so it sits above them rather than in the tab bar,
+      where it would compete with navigation. --}}
+<button type="button" class="phonedry-add-spells" data-action="openSpellBrowser">
+  {{localize "PHONEDRY.Spells.Add"}}
+</button>
+
 {{#if spells.empty}}
 
   <section class="phonedry-empty">
     <h2>{{localize "PHONEDRY.Spells.NoneHeading"}}</h2>
-    <p>{{localize "PHONEDRY.Spells.NoneBody"}}</p>
+    <p>{{localize "PHONEDRY.Spells.NoneBodyAdd"}}</p>
   </section>
 
 {{else}}

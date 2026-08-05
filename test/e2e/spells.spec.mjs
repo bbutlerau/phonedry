@@ -96,6 +96,80 @@ test.describe("spells", () => {
     await context.close();
   });
 
+  test("spells can be found and added from the compendium", async ({ browser }) => {
+    const context = await browser.newContext(TOUCH);
+    const page = await context.newPage();
+    const errors = collectErrors(page);
+
+    await joinGame(page);
+    await reloadAt(page, PHONE_VIEWPORT);
+
+    // Start from a known state. This test adds a spell, and an earlier failure
+    // used to leave it behind — after which the browser correctly showed it as
+    // already known and the test failed on a disabled button, pointing at
+    // entirely the wrong thing.
+    await page.evaluate(async () => {
+      const actor = game.modules.get("phonedry").api.shell.actor;
+      const stray = actor.items.find(i => i.name === "Inflict Wounds");
+      if ( stray ) await stray.delete();
+    });
+
+    await page.locator('.phonedry-tabs__tab[data-tab="spells"]').click();
+    await page.locator("[data-action='openSpellBrowser']").click();
+    await expect(page.locator(".phonedry-browser")).toBeVisible();
+
+    // Opening must not stall. The obvious implementation asks the compendium
+    // for spell levels, which costs a re-index of about ten seconds — long
+    // enough that a player would think the sheet had hung.
+    await expect(page.locator(".phonedry-browser__result").first()).toBeVisible({ timeout: 3_000 });
+
+    // The list is capped, and says so rather than looking complete.
+    await expect(page.locator(".phonedry-browser__note")).toContainText("Showing");
+
+    await page.locator(".phonedry-browser__search").fill("inflict wounds");
+    await expect.poll(
+      () => page.locator(".phonedry-browser__name").allInnerTexts()
+    ).toEqual(["Inflict Wounds"]);
+
+    const before = await page.evaluate(
+      () => game.modules.get("phonedry").api.shell.actor.items.filter(i => i.type === "spell").length
+    );
+
+    await page.locator("[data-action='addSpell']").first().click();
+
+    // The document is what must change. It also has to arrive with its
+    // compendium source recorded, which is what lets the sheet say later where
+    // a spell came from.
+    await expect.poll(
+      () => page.evaluate(() => {
+        const actor = game.modules.get("phonedry").api.shell.actor;
+        const added = actor.items.find(i => i.name === "Inflict Wounds");
+        return added ? !!added._stats?.compendiumSource : false;
+      })
+    ).toBe(true);
+
+    // And it is now marked as known rather than offered again.
+    await expect(page.locator("[data-action='addSpell']").first()).toBeDisabled();
+
+    await page.locator("[data-action='closeSpellBrowser']").click();
+    await expect(page.locator(".phonedry-browser")).toBeHidden();
+
+    // Tidy up, so the suite can be run repeatedly.
+    await page.evaluate(async () => {
+      const actor = game.modules.get("phonedry").api.shell.actor;
+      const added = actor.items.find(i => i.name === "Inflict Wounds");
+      if ( added ) await added.delete();
+    });
+    await expect.poll(
+      () => page.evaluate(
+        () => game.modules.get("phonedry").api.shell.actor.items.filter(i => i.type === "spell").length
+      )
+    ).toBe(before);
+
+    expect(errors).toEqual([]);
+    await context.close();
+  });
+
   test("preparing a spell reaches dnd5e", async ({ browser }) => {
     const context = await browser.newContext(TOUCH);
     const page = await context.newPage();

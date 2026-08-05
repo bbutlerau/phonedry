@@ -95,6 +95,19 @@ All notable changes to Phonedry are recorded here. Versions follow
   granted them. This is the answer to a question ordinary sheets leave open:
   why the same spell appears on the list twice. Class spells are left unmarked,
   because marking the ordinary case would leave nothing standing out.
+- Spells can be added from the compendium. Search by name across the spell
+  lists dnd5e holds for the character's classes, tap to add. Spells already on
+  the sheet are shown greyed and labelled rather than filtered out, so a search
+  that finds one is not mistaken for a search that failed.
+
+  Duplicates are collapsed: with the Player's Handbook module installed every
+  spell exists twice, once in dnd5e's own pack, and offering both would be two
+  identical rows with nothing to choose between them.
+
+  There is no filter by spell level. Levels are not in the compendium index
+  Foundry builds, and asking for them costs a re-index of about ten seconds in
+  the development world — long enough to look like a hang. Search by name is
+  instant.
 - Unit tests for the actor-to-view-model mappers. These need no Foundry, no
   browser and no world, so unlike the smoke tests they can run in CI.
 

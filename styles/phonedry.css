@@ -1027,7 +1027,8 @@
   .phonedry-active .phonedry-header,
   .phonedry-active .phonedry-content,
   .phonedry-active .phonedry-log,
-  .phonedry-active .phonedry-tabs {
+  .phonedry-active .phonedry-tabs,
+  .phonedry-active .phonedry-browser {
     display: none;
   }
 }
@@ -1343,4 +1344,140 @@
   height: auto;
   max-height: none;
   overflow: visible;
+}
+
+/* -------------------------------------------- */
+/*  Spell browser                               */
+/* -------------------------------------------- */
+
+.phonedry-active .phonedry-add-spells {
+  width: 100%;
+  margin-bottom: var(--phonedry-gap-md);
+  background: var(--phonedry-surface);
+  border: 1px solid var(--phonedry-accent);
+  border-radius: 0.375rem;
+  color: var(--phonedry-accent);
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/*
+ * A panel of Phonedry's own rather than Foundry's compendium browser, which is
+ * a desktop application with a filter rail and is one of the dialogs that
+ * renders badly in WebKit.
+ *
+ * Fixed over the whole shell rather than inside the content pane: it is a mode,
+ * not a section, and half-covering the sheet would invite taps on a spell list
+ * that is about to change underneath.
+ */
+.phonedry-active .phonedry-browser {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+
+  display: flex;
+  flex-direction: column;
+  background: var(--phonedry-bg);
+
+  padding:
+    calc(var(--phonedry-safe-top) + var(--phonedry-gap-md))
+    calc(var(--phonedry-safe-right) + var(--phonedry-gap-lg))
+    calc(var(--phonedry-safe-bottom) + var(--phonedry-gap-md))
+    calc(var(--phonedry-safe-left) + var(--phonedry-gap-lg));
+}
+
+.phonedry-active .phonedry-browser[hidden] {
+  display: none;
+}
+
+.phonedry-active .phonedry-browser__bar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--phonedry-gap-md);
+  flex: none;
+}
+
+.phonedry-active .phonedry-browser__search {
+  min-height: var(--phonedry-touch-target);
+  padding: 0 var(--phonedry-gap-md);
+
+  background: var(--phonedry-surface);
+  border: 1px solid var(--phonedry-border);
+  border-radius: 0.375rem;
+  color: var(--phonedry-text);
+
+  /* Under 16px iOS zooms the page on focus and does not zoom back out. */
+  font-size: 1rem;
+
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.phonedry-active .phonedry-browser__close {
+  width: var(--phonedry-touch-target);
+  background: var(--phonedry-surface);
+  border: 1px solid var(--phonedry-border);
+  border-radius: 0.375rem;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.phonedry-active .phonedry-browser__results {
+  flex: 1;
+  margin: var(--phonedry-gap-md) 0 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.phonedry-active .phonedry-browser__result {
+  display: grid;
+  grid-template-columns: 2rem 1fr auto;
+  align-items: center;
+  gap: var(--phonedry-gap-md);
+
+  width: 100%;
+  padding: var(--phonedry-gap-sm) 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--phonedry-border);
+  text-align: left;
+}
+
+/* Spells the character already has stay on the list, greyed. Filtering them
+   out would leave a player searching for one wondering if search was broken. */
+.phonedry-active .phonedry-browser__result:disabled {
+  color: var(--phonedry-muted);
+  cursor: default;
+}
+
+.phonedry-active .phonedry-browser__icon {
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 0.25rem;
+  object-fit: cover;
+}
+
+.phonedry-active .phonedry-browser__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.phonedry-active .phonedry-browser__owned {
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--phonedry-muted);
+}
+
+.phonedry-active .phonedry-browser__note {
+  flex: none;
+  margin: var(--phonedry-gap-md) 0 0;
+  font-size: 0.75rem;
+  color: var(--phonedry-muted);
+  text-align: center;
 }

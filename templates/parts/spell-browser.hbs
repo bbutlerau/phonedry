@@ -1,0 +1,61 @@
+{{!--
+  Adding spells from the compendium.
+
+  A full-screen panel of Phonedry's own rather than Foundry's compendium
+  browser, which is a desktop application with filters down one side — and one
+  of the dialogs that renders badly in WebKit.
+
+  Search first: a cleric's list is 226 spells, and scrolling that on a phone is
+  not a way to find anything. There is no level filter, because spell levels are
+  not in the compendium index Foundry builds and asking for them costs a
+  re-index of about ten seconds.
+
+  CONSTRAINT: exactly one top-level element. See the note in header.hbs.
+--}}
+<div class="phonedry-browser" {{#unless browser.open}}hidden{{/unless}}>
+
+  <div class="phonedry-browser__bar">
+    <input type="text" class="phonedry-browser__search" name="spellSearch"
+           value="{{browser.query}}" placeholder="{{localize 'PHONEDRY.Spells.SearchPlaceholder'}}"
+           autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+           aria-label="{{localize 'PHONEDRY.Spells.SearchLabel'}}" />
+    <button type="button" class="phonedry-browser__close" data-action="closeSpellBrowser"
+            aria-label="{{localize 'PHONEDRY.Spells.CloseBrowser'}}">&times;</button>
+  </div>
+
+  {{#if browser.results.length}}
+    <ul class="phonedry-browser__results">
+      {{#each browser.results}}
+        <li>
+          <button type="button" class="phonedry-browser__result"
+                  data-action="addSpell" data-uuid="{{this.uuid}}"
+                  {{#if this.owned}}disabled{{/if}}>
+            <img class="phonedry-browser__icon" src="{{this.img}}" alt="" />
+            <span class="phonedry-browser__name">{{this.name}}</span>
+            {{#if this.owned}}
+              <span class="phonedry-browser__owned">{{localize "PHONEDRY.Spells.AlreadyKnown"}}</span>
+            {{/if}}
+          </button>
+        </li>
+      {{/each}}
+    </ul>
+
+    {{#if browser.truncated}}
+      {{!-- Says how many were left out rather than silently showing the first
+            page, so a player knows to narrow the search rather than assuming
+            the spell they want is missing. --}}
+      <p class="phonedry-browser__note">
+        {{localize "PHONEDRY.Spells.MoreResults" shown=browser.results.length total=browser.total}}
+      </p>
+    {{/if}}
+  {{else}}
+    <p class="phonedry-browser__note">
+      {{#if browser.query}}
+        {{localize "PHONEDRY.Spells.NoMatches"}}
+      {{else}}
+        {{localize "PHONEDRY.Spells.NoList"}}
+      {{/if}}
+    </p>
+  {{/if}}
+
+</div>
