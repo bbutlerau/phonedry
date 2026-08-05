@@ -17,7 +17,17 @@
  * spell types two more letters; anyone browsing is served fine by the first
  * page.
  */
-export const MAX_RESULTS = 40;
+export const MAX_RESULTS = 60;
+
+/**
+ * How results can be ordered.
+ *
+ * Level and school are only sortable because the boot path asks Foundry to
+ * carry both in its compendium indexes — see `registerIndexFields`. Without
+ * that they are absent, and fetching them costs a rebuild long enough to look
+ * like a hang.
+ */
+export const SORTS = { NAME: "name", LEVEL: "level", SCHOOL: "school" };
 
 /**
  * Fold a string for comparison: lower case, accents removed.
@@ -81,32 +91,82 @@ export function dedupeEntries(entries) {
  *
  * @param {object[]} entries
  * @param {object} [options]
- * @param {string} [options.query]     What was typed.
+ * @param {string} [options.query]       What was typed.
  * @param {Set<string>} [options.owned]  Ids the character already has.
+ * @param {string} [options.sort]        A SORTS value.
+ * @param {object} [options.labels]      `{ levels, schools }` from CONFIG.DND5E.
  * @param {number} [options.limit]
  * @returns {{results: object[], total: number, truncated: boolean}}
  */
-export function searchSpells(entries, { query = "", owned = new Set(), limit = MAX_RESULTS } = {}) {
+export function searchSpells(entries, {
+  query = "", owned = new Set(), sort = SORTS.NAME, labels = {}, limit = MAX_RESULTS
+} = {}) {
   const needle = fold(query.trim());
 
-  const matched = dedupeEntries(entries)
+  const described = dedupeEntries(entries)
     .filter(entry => !needle || fold(entry.name).includes(needle))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .map(entry => describeEntry(entry, labels, owned));
+
+  described.sort(comparator(sort));
 
   return {
-    total: matched.length,
-    truncated: matched.length > limit,
-
-    results: matched.slice(0, limit).map(entry => ({
-      id: entry._id,
-      uuid: entry.uuid,
-      name: entry.name,
-      img: entry.img,
-
-      // Already on the sheet. Shown rather than filtered out, because a player
-      // searching for a spell they already have wants to be told that, not left
-      // wondering whether the search is broken.
-      owned: owned.has(entry._id)
-    }))
+    total: described.length,
+    truncated: described.length > limit,
+    results: described.slice(0, limit)
   };
+}
+
+/**
+ * Turn an index entry into a result row.
+ *
+ * @param {object} entry
+ * @param {object} labels
+ * @param {Set<string>} owned
+ * @returns {object}
+ */
+function describeEntry(entry, labels, owned) {
+  const level = entry.system?.level ?? null;
+  const school = entry.system?.school ?? null;
+
+  return {
+    id: entry._id,
+    uuid: entry.uuid,
+    name: entry.name,
+    img: entry.img,
+
+    level,
+    school,
+    levelLabel: (level === null) ? null : (labels.levels?.[level] ?? String(level)),
+    schoolLabel: school ? (labels.schools?.[school]?.label ?? school) : null,
+
+    // Already on the sheet. Shown rather than filtered out, because a player
+    // searching for a spell they already have wants to be told that, not left
+    // wondering whether the search is broken.
+    owned: owned.has(entry._id)
+  };
+}
+
+/**
+ * A comparator for the chosen order.
+ *
+ * Every order falls back to name, so the list is stable and predictable rather
+ * than reshuffling within a level each time it is built.
+ *
+ * @param {string} sort  A SORTS value.
+ * @returns {(a: object, b: object) => number}
+ */
+function comparator(sort) {
+  const byName = (a, b) => a.name.localeCompare(b.name);
+
+  if ( sort === SORTS.LEVEL ) {
+    // Nulls last: a spell whose level is unknown belongs at the end rather than
+    // sorted in among the cantrips as though it were one.
+    return (a, b) => ((a.level ?? Infinity) - (b.level ?? Infinity)) || byName(a, b);
+  }
+
+  if ( sort === SORTS.SCHOOL ) {
+    return (a, b) => (a.schoolLabel ?? "").localeCompare(b.schoolLabel ?? "") || byName(a, b);
+  }
+
+  return byName;
 }

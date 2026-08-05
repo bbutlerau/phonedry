@@ -126,6 +126,29 @@ test.describe("spells", () => {
     // The list is capped, and says so rather than looking complete.
     await expect(page.locator(".phonedry-browser__note")).toContainText("Showing");
 
+    /* --- ordering by level and school --- */
+
+    // Both are only possible because the boot path asks Foundry to carry them
+    // in its compendium index. Fetching them on demand instead costs a rebuild
+    // of about ten seconds, so if this ever comes back empty the cause is that
+    // registration, not the sort.
+    await page.locator('[data-sort="level"]').click();
+    await expect(page.locator(".phonedry-browser__meta").first()).toContainText(/cantrip/i);
+
+    const levels = await page.locator(".phonedry-browser__result")
+      .evaluateAll(els => els.map(el => Number(el.dataset.level)));
+    expect(levels, "results are not in level order")
+      .toEqual([...levels].sort((a, b) => a - b));
+
+    await page.locator('[data-sort="school"]').click();
+    const schools = await page.locator(".phonedry-browser__meta")
+      .allInnerTexts()
+      .then(texts => texts.map(t => t.split("·").at(-1).trim()));
+    expect(schools, "results are not in school order")
+      .toEqual([...schools].sort((a, b) => a.localeCompare(b)));
+
+    await page.locator('[data-sort="name"]').click();
+
     await page.locator(".phonedry-browser__search").fill("inflict wounds");
     await expect.poll(
       () => page.locator(".phonedry-browser__name").allInnerTexts()

@@ -17,7 +17,7 @@ import { buildStatsView } from "../data/stats.mjs";
 import { buildSpellsView } from "../data/spells.mjs";
 import { castSpell, setPrepared } from "../spells.mjs";
 import { addSpell, getAvailableSpells, ownedSpellIds } from "../spell-browser.mjs";
-import { searchSpells } from "../data/spell-browser.mjs";
+import { searchSpells, SORTS } from "../data/spell-browser.mjs";
 import {
   ROLL_MODE, rollAbilityCheck, rollSavingThrow, rollSkill,
   rollDeathSave, rollInitiative, rollTypedCommand
@@ -46,6 +46,7 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       closeSpellBrowser: PhonedryShell.#onCloseSpellBrowser,
       openSpellBrowser: PhonedryShell.#onOpenSpellBrowser,
       setRollMode: PhonedryShell.#onSetRollMode,
+      setSpellSort: PhonedryShell.#onSetSpellSort,
       setTab: PhonedryShell.#onSetTab,
       stepHp: PhonedryShell.#onStepHp,
       toggleHpEditor: PhonedryShell.#onToggleHpEditor,
@@ -170,6 +171,9 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /** What is typed in the spell search field. @type {string} */
   #browserQuery = "";
+
+  /** How the browser's results are ordered. @type {string} */
+  #browserSort = SORTS.NAME;
 
   /**
    * Compendium index entries for every spell this character can learn.
@@ -337,16 +341,26 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
    * @returns {object}
    */
   #prepareBrowser(actor) {
+    const sorts = [
+      { id: SORTS.NAME, label: "PHONEDRY.Spells.SortName" },
+      { id: SORTS.LEVEL, label: "PHONEDRY.Spells.SortLevel" },
+      { id: SORTS.SCHOOL, label: "PHONEDRY.Spells.SortSchool" }
+    ].map(sort => ({ ...sort, active: sort.id === this.#browserSort }));
+
     if ( !this.#browserOpen || !actor ) {
-      return { open: false, query: this.#browserQuery, results: [], total: 0, truncated: false };
+      return {
+        open: false, query: this.#browserQuery, sorts, results: [], total: 0, truncated: false
+      };
     }
 
     const search = searchSpells(this.#browserEntries ?? [], {
       query: this.#browserQuery,
-      owned: ownedSpellIds(actor)
+      owned: ownedSpellIds(actor),
+      sort: this.#browserSort,
+      labels: { levels: CONFIG.DND5E.spellLevels, schools: CONFIG.DND5E.spellSchools }
     });
 
-    return { open: true, query: this.#browserQuery, ...search };
+    return { open: true, query: this.#browserQuery, sorts, ...search };
   }
 
   /* -------------------------------------------- */
@@ -668,6 +682,16 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
     // Focus after the render that builds the field, so the keyboard comes up
     // ready to type rather than after a second tap.
     this.element.querySelector(".phonedry-browser__search")?.focus();
+  }
+
+  /**
+   * Close the spell browser.
+   *
+   * @this {PhonedryShell}
+   */
+  static #onSetSpellSort(event, target) {
+    this.#browserSort = target.dataset.sort;
+    this.render({ parts: ["browser"] });
   }
 
   /**

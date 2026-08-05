@@ -177,6 +177,32 @@ export function enableSafeAreaInsets() {
 }
 
 /**
+ * Ask Foundry to carry spell levels and schools in its compendium indexes.
+ *
+ * The spell browser needs both to sort by anything other than name, and neither
+ * is in the index Foundry builds by default. Requesting them afterwards, with
+ * `getIndex({ fields })`, forces a rebuild that was measured at about ten
+ * seconds in the development world — long enough that the browser would look
+ * like it had hung.
+ *
+ * Declaring them here instead costs nothing extra: the index is built once,
+ * lazily, and simply carries two more scalar fields when it is. This is the
+ * same mechanism dnd5e uses for its own `system.identifier`.
+ *
+ * Timing matters. It has to happen before anything indexes a pack, which
+ * includes dnd5e's spell list registry at "ready" — "setup" is comfortably
+ * early. Done only when Phonedry is active, so a desktop player pays nothing.
+ */
+export function registerIndexFields() {
+  const fields = CONFIG.Item?.compendiumIndexFields;
+  if ( !fields ) return;
+
+  for ( const field of ["system.level", "system.school"] ) {
+    if ( !fields.includes(field) ) fields.push(field);
+  }
+}
+
+/**
  * Mark the document so Phonedry's stylesheet applies.
  *
  * Every rule in phonedry.css is scoped under `.phonedry-active`, so without
@@ -191,6 +217,7 @@ export function activateBodyClass() {
  */
 export function boot() {
   const changed = disableCanvas();
+  registerIndexFields();
   suppressCoreUI();
   filterResolutionWarnings();
   enableSafeAreaInsets();

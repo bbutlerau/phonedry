@@ -104,10 +104,11 @@ All notable changes to Phonedry are recorded here. Versions follow
   spell exists twice, once in dnd5e's own pack, and offering both would be two
   identical rows with nothing to choose between them.
 
-  There is no filter by spell level. Levels are not in the compendium index
-  Foundry builds, and asking for them costs a re-index of about ten seconds in
-  the development world — long enough to look like a hang. Search by name is
-  instant.
+  Results can be ordered by name, level or school. Levels and schools are not
+  in the compendium index Foundry builds by default, and asking for them
+  afterwards costs a re-index of about ten seconds — so Phonedry declares them
+  as index fields at startup instead, which adds them to the index Foundry was
+  going to build anyway. The browser still opens in well under a second.
 - Unit tests for the actor-to-view-model mappers. These need no Foundry, no
   browser and no world, so unlike the smoke tests they can run in CI.
 

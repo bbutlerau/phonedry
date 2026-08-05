@@ -84,7 +84,11 @@
       "Ritual": "Ritual",
       "SearchLabel": "Search spells",
       "SearchPlaceholder": "Search spells",
-      "Slots": "Spell slots"
+      "Slots": "Spell slots",
+      "SortLabel": "Order spells by",
+      "SortLevel": "Level",
+      "SortName": "Name",
+      "SortSchool": "School"
     }
   }
 }

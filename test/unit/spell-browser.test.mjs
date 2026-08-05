@@ -122,3 +122,55 @@ describe("searchSpells", () => {
     assert.equal(searchSpells(duplicated).total, 1);
   });
 });
+
+/* -------------------------------------------- */
+
+describe("searchSpells ordering", () => {
+  const labels = {
+    levels: { 0: "Cantrip", 1: "1st Level", 3: "3rd Level" },
+    schools: { abj: { label: "Abjuration" }, evo: { label: "Evocation" } }
+  };
+
+  const entries = [
+    { ...entry("Shield"), system: { level: 1, school: "abj" } },
+    { ...entry("Light"), system: { level: 0, school: "evo" } },
+    { ...entry("Counterspell"), system: { level: 3, school: "abj" } },
+    { ...entry("Dancing Lights"), system: { level: 0, school: "evo" } }
+  ];
+
+  it("labels each result with its level and school", () => {
+    // Both come from the compendium index, which only carries them because the
+    // boot path asks Foundry to include them.
+    const { results } = searchSpells(entries, { labels, query: "shield" });
+    assert.equal(results[0].levelLabel, "1st Level");
+    assert.equal(results[0].schoolLabel, "Abjuration");
+  });
+
+  it("sorts by level, then by name within a level", () => {
+    const { results } = searchSpells(entries, { labels, sort: "level" });
+    assert.deepEqual(results.map(r => r.name),
+      ["Dancing Lights", "Light", "Shield", "Counterspell"]);
+  });
+
+  it("sorts by school label rather than by its key", () => {
+    // The keys are "abj" and "evo", which happen to sort the same way here —
+    // but "Divination" is "div" and "Enchantment" is "enc", and a player reads
+    // the label.
+    const { results } = searchSpells(entries, { labels, sort: "school" });
+    assert.deepEqual(results.map(r => r.schoolLabel),
+      ["Abjuration", "Abjuration", "Evocation", "Evocation"]);
+    assert.deepEqual(results.slice(0, 2).map(r => r.name), ["Counterspell", "Shield"]);
+  });
+
+  it("puts spells of unknown level last rather than among the cantrips", () => {
+    const withUnknown = [...entries, entry("Mystery")];
+    const { results } = searchSpells(withUnknown, { labels, sort: "level" });
+    assert.equal(results.at(-1).name, "Mystery");
+  });
+
+  it("defaults to name order", () => {
+    const { results } = searchSpells(entries, { labels });
+    assert.deepEqual(results.map(r => r.name),
+      ["Counterspell", "Dancing Lights", "Light", "Shield"]);
+  });
+});

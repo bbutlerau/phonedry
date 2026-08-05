@@ -23,15 +23,34 @@
             aria-label="{{localize 'PHONEDRY.Spells.CloseBrowser'}}">&times;</button>
   </div>
 
+  {{!-- Sorting by level or school is only possible because the boot path asks
+        Foundry to carry both in its compendium index. --}}
+  <div class="phonedry-browser__sorts" role="group"
+       aria-label="{{localize 'PHONEDRY.Spells.SortLabel'}}">
+    {{#each browser.sorts}}
+      <button type="button" class="phonedry-browser__sort" data-action="setSpellSort"
+              data-sort="{{this.id}}" aria-pressed="{{#if this.active}}true{{else}}false{{/if}}">
+        {{localize this.label}}
+      </button>
+    {{/each}}
+  </div>
+
   {{#if browser.results.length}}
     <ul class="phonedry-browser__results">
       {{#each browser.results}}
         <li>
           <button type="button" class="phonedry-browser__result"
                   data-action="addSpell" data-uuid="{{this.uuid}}"
+                  data-level="{{this.level}}"
                   {{#if this.owned}}disabled{{/if}}>
             <img class="phonedry-browser__icon" src="{{this.img}}" alt="" />
-            <span class="phonedry-browser__name">{{this.name}}</span>
+            <span class="phonedry-browser__text">
+              <span class="phonedry-browser__name">{{this.name}}</span>
+              <span class="phonedry-browser__meta">
+                {{#if this.levelLabel}}{{this.levelLabel}}{{/if}}
+                {{#if this.schoolLabel}} · {{this.schoolLabel}}{{/if}}
+              </span>
+            </span>
             {{#if this.owned}}
               <span class="phonedry-browser__owned">{{localize "PHONEDRY.Spells.AlreadyKnown"}}</span>
             {{/if}}
