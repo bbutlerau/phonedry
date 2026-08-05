@@ -131,6 +131,26 @@ export function rollSkill(actor, skill, mode = ROLL_MODE.NORMAL) {
 }
 
 /**
+ * Roll a tool check.
+ *
+ * The ability is deliberately not passed, for the same reason it is not for a
+ * skill: dnd5e resolves which one a tool uses itself, and a feature that moves
+ * Calligrapher's Supplies onto Dexterity should keep working without this
+ * knowing about it.
+ *
+ * @param {Actor} actor
+ * @param {string} tool  A tool key, e.g. "calligrapher".
+ * @param {string} [mode]
+ * @returns {Promise<object[]|null>}
+ */
+export function rollToolCheck(actor, tool, mode = ROLL_MODE.NORMAL) {
+  return attempt(
+    () => actor.rollToolCheck({ tool, ...modeFlags(mode) }, NO_DIALOG),
+    "the tool check"
+  );
+}
+
+/**
  * Roll a death saving throw.
  *
  * dnd5e refuses this above zero hit points and warns the player itself, so

@@ -54,9 +54,14 @@ export const TABS = [
   // screen has no way to do it.
   { id: "items", label: "PHONEDRY.Tabs.Items", icon: "fa-backpack" },
 
-  // Last, because it is the one consulted rather than acted from. Conditions
-  // are set once when something happens and then read for the rest of a fight.
-  { id: "conditions", label: "PHONEDRY.Tabs.Conditions", icon: "fa-heart-pulse" }
+  // Conditions are set once when something happens and then read for the rest
+  // of a fight, so they sit behind the screens a turn reaches for.
+  { id: "conditions", label: "PHONEDRY.Tabs.Conditions", icon: "fa-heart-pulse" },
+
+  // Last, because it is the only screen with nothing on it to act on. Features
+  // and traits are looked up between fights, or when learning a character, and
+  // a tab reached for once a session belongs furthest from the thumb.
+  { id: "features", label: "PHONEDRY.Tabs.Features", icon: "fa-scroll" }
 ];
 
 /** The section shown on first load. */

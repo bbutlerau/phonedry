@@ -92,6 +92,42 @@
     <p class="phonedry-section__note">{{localize "PHONEDRY.Describe.HintSkills"}}</p>
   </section>
 
+  {{!-- Tools sit under skills because they are the same gesture on the same
+        kind of thing: a d20 against an ability, rolled the same way and read
+        the same way. Keeping them apart from the skills list rather than mixed
+        into it is what stops "Calligrapher's Supplies" appearing between
+        Athletics and Deception, where nobody is looking for it.
+
+        Only the tools the character is trained in. dnd5e knows about forty and
+        a character has one or two, so listing the rest would bury the ones that
+        matter under a screen of zeroes. That is the opposite of the rule above,
+        where every skill is rollable whether proficient or not — and right for
+        the opposite reason: an untrained skill check is ordinary, an untrained
+        tool check is the GM saying you may try anyway. --}}
+  {{#if stats.tools.length}}
+    <section class="phonedry-section">
+      <h2 class="phonedry-section__heading">{{localize "PHONEDRY.Sheet.Tools"}}</h2>
+
+      <ul class="phonedry-tools">
+        {{#each stats.tools}}
+          <li>
+            <button type="button" class="phonedry-skill" data-action="roll" data-roll="tool"
+                    data-roll-key="{{this.key}}">
+              <span class="phonedry-pip phonedry-prof--{{this.proficiency}}"></span>
+              <span class="phonedry-skill__name">{{this.label}}</span>
+              <span class="phonedry-skill__ability">{{this.abilityLabel}}</span>
+              <span class="phonedry-skill__mod">{{this.total}}</span>
+              {{!-- The column is held open rather than dropped, so the
+                    modifiers line up with the skills directly above. A tool has
+                    no passive score — passive perception is a skill idea. --}}
+              <span class="phonedry-skill__passive"></span>
+            </button>
+          </li>
+        {{/each}}
+      </ul>
+    </section>
+  {{/if}}
+
 {{else}}
 
   {{!-- No character to show. Each reason gets its own wording, because

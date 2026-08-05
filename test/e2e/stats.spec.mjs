@@ -49,7 +49,10 @@ test.describe("stats screen", () => {
     // Six abilities and dnd5e's full skill list. Hard-coded because a count
     // derived from the page would agree with itself no matter what broke.
     await expect(page.locator(".phonedry-ability")).toHaveCount(6);
-    await expect(page.locator(".phonedry-skill")).toHaveCount(18);
+    // Scoped to the skills list. A tool row is deliberately the same row as a
+    // skill — same grid, same pip, same modifier column, so the two lists line
+    // up down the screen — which means `.phonedry-skill` alone counts both.
+    await expect(page.locator(".phonedry-skills .phonedry-skill")).toHaveCount(18);
 
     await expect(page.locator(".phonedry-hp__value")).toContainText("/");
     expect(errors).toEqual([]);

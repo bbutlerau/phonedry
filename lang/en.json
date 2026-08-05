@@ -30,7 +30,8 @@
       "Skills": "Skills",
       "Speed": "Speed",
       "SpellSave": "Spell DC",
-      "Successes": "Successes"
+      "Successes": "Successes",
+      "Tools": "Tools"
     },
     "Rolls": {
       "Advantage": "Advantage",
@@ -75,6 +76,7 @@
       "Conditions": "Status",
       "Label": "Character sheet sections",
       "Items": "Items",
+      "Features": "Features",
       "Spells": "Spells",
       "Stats": "Stats"
     },
@@ -116,6 +118,21 @@
       "SortLabel": "Order gear by",
       "SortName": "Name",
       "SortType": "Kind"
+    },
+    "Features": {
+      "ArmourProficiencies": "Armour",
+      "ConditionImmunities": "Condition immunities",
+      "Defences": "Resistances and immunities",
+      "Except": "except",
+      "Immunities": "Immunities",
+      "Languages": "Languages",
+      "NoneBody": "Nothing on this character is passive. Everything they can do is on the Actions tab.",
+      "NoneHeading": "No features or traits",
+      "Proficiencies": "Proficiencies",
+      "Resistances": "Resistances",
+      "Size": "Size",
+      "Vulnerabilities": "Vulnerabilities",
+      "WeaponProficiencies": "Weapons"
     },
     "Compendium": {
       "Close": "Close",
@@ -168,6 +185,7 @@
       "HintActions": "Hold an action to read what it does.",
       "HintBrowser": "Hold a spell to read it before adding.",
       "HintConditions": "Hold a condition to read the rule.",
+      "HintFeatures": "Tap or hold a feature to read what it does.",
       "HintItemBrowser": "Hold an item to read it before adding.",
       "HintItems": "Tap or hold an item to read what it is.",
       "HintSkills": "Hold a skill to read the rule.",

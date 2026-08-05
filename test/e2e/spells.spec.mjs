@@ -25,7 +25,7 @@ test.describe("spells", () => {
     // when there is a spell to cast.
     expect(await page.locator(".phonedry-tabs__tab").evaluateAll(
       els => els.map(el => el.dataset.tab)
-    )).toEqual(["stats", "actions", "spells", "items", "conditions"]);
+    )).toEqual(["stats", "actions", "spells", "items", "conditions", "features"]);
 
     // Stats is where a session starts, and the bar says so.
     await expect(page.locator('.phonedry-tabs__tab[data-tab="stats"]')).toHaveAttribute("aria-current", "page");

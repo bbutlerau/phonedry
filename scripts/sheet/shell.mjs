@@ -14,6 +14,7 @@ import { MODULE_ID, TABS, DEFAULT_TAB } from "../constants.mjs";
 import { isTabletViewport } from "../detect.mjs";
 import { resolveCharacter } from "../data/character.mjs";
 import { buildStatsView } from "../data/stats.mjs";
+import { buildFeaturesView } from "../data/features.mjs";
 import { buildSpellsView } from "../data/spells.mjs";
 import { buildActionsView } from "../data/actions.mjs";
 import { buildConditionsView } from "../data/conditions.mjs";
@@ -33,7 +34,7 @@ import { addItem, getAvailableItems } from "../item-browser.mjs";
 import { searchItems, ITEM_SORTS } from "../data/item-browser.mjs";
 import {
   ROLL_MODE, rollAbilityCheck, rollSavingThrow, rollSkill,
-  rollConcentration, rollDeathSave, rollInitiative, rollTypedCommand
+  rollConcentration, rollDeathSave, rollInitiative, rollToolCheck, rollTypedCommand
 } from "../rolls.mjs";
 import { applyDamage, applyHealing, applyTempHP, parseAmount } from "../hp.mjs";
 import { describeRoll, isOwnRoll, pushRoll } from "../data/roll-log.mjs";
@@ -501,7 +502,13 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       // The view model, or null. The template branches on this rather than on
       // the actor, so an actor that somehow fails to map still lands on the
       // empty state instead of throwing inside Handlebars.
-      stats: actor ? buildStatsView(actor, CONFIG.DND5E) : null,
+      // Tool names live on compendium items rather than in config, so dnd5e
+      // resolves them through its own Trait helper. Handed in for the same
+      // reason item type labels are: the mapper must stay free of Foundry
+      // globals to be unit-testable.
+      stats: actor ? buildStatsView(actor, CONFIG.DND5E, this.#toolLabels(actor)) : null,
+
+      features: actor ? buildFeaturesView(actor, CONFIG.DND5E) : null,
       spells: actor ? buildSpellsView(actor, CONFIG.DND5E) : null,
       // Item type names come from core rather than dnd5e, and are localised
       // keys, so they are handed in rather than looked up inside the mapper —
@@ -537,6 +544,29 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
         candidates: candidates.map(a => ({ id: a.id, name: a.name }))
       }
     });
+  }
+
+  /**
+   * Names for the tools this character is trained in.
+   *
+   * A tool's name is the name of its compendium item — "Calligrapher's
+   * Supplies" — rather than a string in config, and `Trait.keyLabel` is dnd5e's
+   * own route to it. Guarded because that helper is not part of any documented
+   * API, and a tool with no name is worth less than a tool listed under its key.
+   *
+   * @param {Actor} actor
+   * @returns {Record<string, string>}
+   */
+  #toolLabels(actor) {
+    const keyLabel = dnd5e?.documents?.Trait?.keyLabel;
+    if ( typeof keyLabel !== "function" ) return {};
+
+    const labels = {};
+    for ( const key of Object.keys(actor.system?.tools ?? {}) ) {
+      labels[key] = String(keyLabel(key, { trait: "tool" }) ?? key);
+    }
+
+    return labels;
   }
 
   /**
@@ -843,6 +873,7 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       case "check": return rollAbilityCheck(this.actor, key, mode);
       case "save": return rollSavingThrow(this.actor, key, mode);
       case "skill": return rollSkill(this.actor, key, mode);
+      case "tool": return rollToolCheck(this.actor, key, mode);
       case "death": return rollDeathSave(this.actor, mode);
     }
   }

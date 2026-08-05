@@ -116,6 +116,46 @@ export function buildSkills(system, config) {
 /* -------------------------------------------- */
 
 /**
+ * Tool proficiencies, as rollable checks.
+ *
+ * Only the tools the character is actually trained in. dnd5e knows about forty
+ * of them and a character has one or two, so listing the rest would bury the
+ * ones that matter under a screen of zeroes — which is the opposite of the
+ * skills list, where every skill is rollable whether you are proficient or not.
+ *
+ * The ability comes from the actor rather than from config, because dnd5e lets
+ * a feature move a tool onto a different ability and the actor is where that
+ * lands.
+ *
+ * Labels are handed in rather than looked up: a tool's name lives on a
+ * compendium item, and resolving it needs `dnd5e.documents.Trait` — which this
+ * mapper must stay free of to be testable.
+ *
+ * @param {object} system   The actor's `system` data.
+ * @param {object} config   `CONFIG.DND5E`.
+ * @param {object} [labels] Tool names, keyed as `system.tools` is.
+ * @returns {object[]}
+ */
+export function buildTools(system, config = {}, labels = {}) {
+  return Object.entries(system?.tools ?? {})
+    .map(([key, data]) => {
+      const ability = data.ability ?? config.tools?.[key]?.ability;
+
+      return {
+        key,
+        label: labels[key] ?? key,
+        ability,
+        abilityLabel: (config.abilities?.[ability]?.abbreviation ?? ability ?? "").toUpperCase(),
+        total: formatModifier(data.total),
+        proficiency: proficiencyLevel(data.value ?? 0)
+      };
+    })
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+/* -------------------------------------------- */
+
+/**
  * Build the header: who this is, and the handful of numbers a player checks
  * constantly enough that they must never be more than a glance away.
  *
@@ -302,16 +342,18 @@ export function buildDeathSaves(system) {
 /**
  * Build the whole stats view model in one call.
  *
- * @param {object} actor   An actor-shaped object.
- * @param {object} config  `CONFIG.DND5E`.
+ * @param {object} actor       An actor-shaped object.
+ * @param {object} config      `CONFIG.DND5E`.
+ * @param {object} [toolLabels] Tool names, keyed as `system.tools` is.
  * @returns {object}
  */
-export function buildStatsView(actor, config) {
+export function buildStatsView(actor, config, toolLabels = {}) {
   const system = actor.system ?? {};
   return {
     header: buildHeader(actor, config),
     abilities: buildAbilities(system, config),
     skills: buildSkills(system, config),
+    tools: buildTools(system, config, toolLabels),
     deathSaves: buildDeathSaves(system)
   };
 }

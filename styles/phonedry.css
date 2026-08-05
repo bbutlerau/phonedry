@@ -660,7 +660,13 @@
 /*  Skills                                      */
 /* -------------------------------------------- */
 
-.phonedry-active .phonedry-skills {
+/* Tools share the skill row exactly — same grid, same pip, same modifier
+   column — so the two lists line up down the screen. The list itself is kept
+   separate because it does not want the two-column tablet treatment below: a
+   character has one or two tools, and splitting those across columns leaves one
+   stranded beside a gap. */
+.phonedry-active .phonedry-skills,
+.phonedry-active .phonedry-tools {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1224,11 +1230,24 @@
   justify-content: center;
   gap: 0.15rem;
 
-  padding: var(--phonedry-gap-sm);
+  /* Horizontal padding drops to nothing at six tabs. On a 393px phone each is
+     65px, and the label is what needs the room. */
+  padding: var(--phonedry-gap-sm) 0;
   background: transparent;
   border: none;
   color: var(--phonedry-muted);
   font-size: 0.6875rem;
+}
+
+/* A wrapped label would put one tab on two lines and grow the whole bar, which
+   reads as a broken layout rather than as a long word. Six is what fits at this
+   size; a seventh needs the font or the labels reconsidered, and the stats
+   smoke test asserts the bar stays a single row so that fails loudly. */
+.phonedry-active .phonedry-tabs__label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 /*
@@ -1840,6 +1859,144 @@
    so the artwork and names line up down the whole group. */
 .phonedry-active .phonedry-section__heading--container .phonedry-item__equip {
   margin-left: -3px;
+}
+
+/* -------------------------------------------- */
+/*  Features and traits                         */
+/* -------------------------------------------- */
+
+.phonedry-active .phonedry-features {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.phonedry-active .phonedry-feature {
+  border-bottom: 1px solid var(--phonedry-border);
+}
+
+/*
+ * No stripe here, unlike the actions and inventory rows.
+ *
+ * Those use one to say what kind of thing a row is, because the rows on those
+ * screens behave differently from one another. Every row here does the same
+ * thing — it is a piece of text to read — and the group heading already says
+ * where it came from, so a stripe would be decoration pretending to be
+ * information.
+ */
+.phonedry-active .phonedry-feature__read {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--phonedry-gap-md);
+
+  width: 100%;
+  min-height: var(--phonedry-touch-target);
+
+  /* Foundry sets an explicit height on buttons, which a grid row would
+     otherwise inherit and clip a two-line row against. */
+  height: auto;
+
+  padding: var(--phonedry-gap-sm);
+  background: transparent;
+  border: none;
+  text-align: left;
+}
+
+.phonedry-active .phonedry-feature__icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  border-radius: 0.25rem;
+  object-fit: cover;
+}
+
+/* min-width: 0 is what lets the middle column shrink so a uses counter is
+   never pushed off the screen. */
+.phonedry-active .phonedry-feature__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.phonedry-active .phonedry-feature__name,
+.phonedry-active .phonedry-feature__meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.phonedry-active .phonedry-feature__meta {
+  font-size: 0.6875rem;
+  color: var(--phonedry-muted);
+}
+
+.phonedry-active .phonedry-feature__uses {
+  padding-right: var(--phonedry-gap-sm);
+  font-size: 0.8125rem;
+  color: var(--phonedry-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.phonedry-active .phonedry-feature__uses-max {
+  font-size: 0.6875rem;
+}
+
+/* -------------------------------------------- */
+
+/*
+ * Traits are a two-column reading layout rather than a list of controls.
+ *
+ * Nothing here is tappable, so none of it needs a touch target — and a term
+ * beside its value is how these are written on every character sheet there has
+ * ever been, which is worth more than novelty on the one screen a player reads
+ * rather than uses.
+ */
+.phonedry-active .phonedry-traits {
+  margin: 0;
+  padding: 0;
+}
+
+.phonedry-active .phonedry-trait {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr;
+  gap: var(--phonedry-gap-md);
+  padding: var(--phonedry-gap-sm) 0;
+  border-bottom: 1px solid var(--phonedry-border);
+}
+
+.phonedry-active .phonedry-trait__term {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--phonedry-muted);
+
+  /* Aligned with the first line of a value that wraps to several, so the pair
+     reads as a row rather than as two independent columns. */
+  align-self: start;
+  padding-top: 0.1rem;
+}
+
+.phonedry-active .phonedry-trait__value {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+/* An empty row inside the defences block is a definite "none" rather than a
+   gap, so it is dimmed rather than left looking unfinished. */
+.phonedry-active .phonedry-trait__value--none {
+  color: var(--phonedry-muted);
+}
+
+/* What gets through anyway. Set apart from the list it qualifies, because
+   "Bludgeoning, Piercing except Magical" read as one run is a different and
+   wrong claim. */
+.phonedry-active .phonedry-trait__bypass {
+  color: var(--phonedry-muted);
+  font-style: italic;
 }
 
 /* -------------------------------------------- */

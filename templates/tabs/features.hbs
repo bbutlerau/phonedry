@@ -1,0 +1,130 @@
+{{!--
+  Features and traits: what is true about this character, rather than what they
+  can do this turn.
+
+  Features come first because they are the bulk of it and the thing a player
+  actually goes looking for — "what does Blessed Strikes do again". Traits are
+  the standing facts underneath, and they are read once and remembered.
+
+  A feature belongs here exactly when the actions screen does not show it. That
+  is the correctness condition rather than a rule of thumb: the two screens
+  partition the character's features between them, and anything that falls
+  between the two is invisible on a phone entirely — which is what this screen
+  was built to fix.
+
+  A tab body, included by content.hbs. No wrapper and no single-root
+  constraint; those belong to the part.
+--}}
+{{#if features.empty}}
+
+  <section class="phonedry-empty">
+    <h2>{{localize "PHONEDRY.Features.NoneHeading"}}</h2>
+    <p>{{localize "PHONEDRY.Features.NoneBody"}}</p>
+  </section>
+
+{{else}}
+
+  {{#each features.groups}}
+    <section class="phonedry-section">
+      <h2 class="phonedry-section__heading">{{localize this.label}}</h2>
+
+      <ul class="phonedry-features">
+        {{#each this.entries}}
+          <li class="phonedry-feature">
+            {{!-- The whole row reads it. There is nothing to *do* with a
+                  passive feature — that is what makes it passive — so the only
+                  question a row can answer is what it says, and the target is
+                  the full width. --}}
+            <button type="button" class="phonedry-feature__read"
+                    data-action="describeItem"
+                    data-item-id="{{this.id}}"
+                    data-describe="{{this.id}}">
+
+              <img class="phonedry-feature__icon" src="{{this.img}}" alt="" />
+
+              <span class="phonedry-feature__body">
+                <span class="phonedry-feature__name">{{this.name}}</span>
+                {{#if this.subtitle}}
+                  <span class="phonedry-feature__meta">{{localize this.subtitle}}</span>
+                {{else if this.requirements}}
+                  <span class="phonedry-feature__meta">{{this.requirements}}</span>
+                {{/if}}
+              </span>
+
+              {{!-- A passive with a pool still has one worth seeing: a feature
+                    that recharges on a rest is exactly the kind that lands on
+                    this screen rather than on the actions one. --}}
+              {{#if this.uses}}
+                <span class="phonedry-feature__uses">{{this.uses.value}}<span class="phonedry-feature__uses-max">/{{this.uses.max}}</span></span>
+              {{/if}}
+
+            </button>
+          </li>
+        {{/each}}
+      </ul>
+    </section>
+  {{/each}}
+
+  {{#if features.defences.length}}
+    {{!-- Shown as a block or not at all. Individually these rows would be
+          ambiguous — a missing "Resistances" could mean the character resists
+          nothing or that the sheet does not show resistances, and on the screen
+          checked before taking damage that difference matters. Together, an
+          empty row inside the block is a definite "none". --}}
+    <section class="phonedry-section">
+      <h2 class="phonedry-section__heading">{{localize "PHONEDRY.Features.Defences"}}</h2>
+
+      <dl class="phonedry-traits">
+        {{#each features.defences}}
+          <div class="phonedry-trait">
+            <dt class="phonedry-trait__term">{{localize this.label}}</dt>
+            <dd class="phonedry-trait__value {{#unless this.values.length}}phonedry-trait__value--none{{/unless}}">
+              {{#if this.values.length}}
+                {{#each this.values}}{{#unless @first}}, {{/unless}}{{this}}{{/each}}
+                {{!-- What gets through anyway. A resistance magical weapons
+                      ignore is a different fact from one nothing ignores, and
+                      dnd5e keeps it somewhere easy to forget. --}}
+                {{#if this.bypasses.length}}
+                  <span class="phonedry-trait__bypass">
+                    {{localize "PHONEDRY.Features.Except"}}
+                    {{#each this.bypasses}}{{#unless @first}}, {{/unless}}{{this}}{{/each}}
+                  </span>
+                {{/if}}
+              {{else}}
+                &mdash;
+              {{/if}}
+            </dd>
+          </div>
+        {{/each}}
+      </dl>
+    </section>
+  {{/if}}
+
+  {{#if features.proficiencies.length}}
+    <section class="phonedry-section">
+      <h2 class="phonedry-section__heading">{{localize "PHONEDRY.Features.Proficiencies"}}</h2>
+
+      <dl class="phonedry-traits">
+        {{#each features.proficiencies}}
+          <div class="phonedry-trait">
+            <dt class="phonedry-trait__term">{{localize this.label}}</dt>
+            <dd class="phonedry-trait__value">
+              {{#each this.values}}{{#unless @first}}, {{/unless}}{{this}}{{/each}}
+            </dd>
+          </div>
+        {{/each}}
+
+        {{#if features.size}}
+          <div class="phonedry-trait">
+            <dt class="phonedry-trait__term">{{localize "PHONEDRY.Features.Size"}}</dt>
+            <dd class="phonedry-trait__value">{{features.size}}</dd>
+          </div>
+        {{/if}}
+      </dl>
+    </section>
+  {{/if}}
+
+  {{!-- Said in words because a hold is invisible until someone tries it. --}}
+  <p class="phonedry-section__note">{{localize "PHONEDRY.Describe.HintFeatures"}}</p>
+
+{{/if}}

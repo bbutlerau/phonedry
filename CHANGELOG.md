@@ -319,6 +319,44 @@ All notable changes to Phonedry are recorded here. Versions follow
   call on the result, and a sheet that dropped it on the roll would be
   inventing a rule.
 
+- Features screen, last in the tab bar: everything a class, species, background
+  or feat gave the character that they do not activate — Spellcasting, Gnomish
+  Cunning, Observant — grouped by where it came from. Tapping or holding a row
+  reads it.
+
+  These were previously invisible. The actions screen lists activities, so
+  anything with none appeared nowhere at all, and there was no way to read what
+  your own character could do from a phone.
+
+  A feature belongs on this screen exactly when the actions screen does not
+  show it, and that is the correctness condition rather than a rule of thumb:
+  the two partition the character's features between them, and anything falling
+  between the two is invisible again. The test is imported from the actions
+  mapper rather than restated, and both the unit tests and the smoke test check
+  the partition directly against every feature on the character.
+
+- Traits, on the same screen below the features: damage resistances,
+  immunities and vulnerabilities, condition immunities, languages, armour and
+  weapon proficiencies, and size.
+
+  Resistances and immunities are shown as a block of four rows or not at all.
+  Individually they would be ambiguous — a missing "Resistances" row could mean
+  the character resists nothing or that the sheet does not show resistances,
+  and on the screen checked before taking damage that difference matters.
+  Shown together, an empty row inside the block is a definite "none".
+
+  Where something gets through a resistance anyway — a magical weapon against
+  resistance to bludgeoning — that is stated rather than left in dnd5e's
+  separate and easily forgotten field.
+
+- Tool proficiencies are rollable checks under the skills list, sharing the
+  skill row exactly so the two line up down the screen. Only the tools the
+  character is actually trained in: dnd5e knows about forty and a character has
+  one or two, so listing the rest would bury the ones that matter. That is the
+  opposite of the rule for skills, where every skill is rollable whether
+  proficient or not, and right for the opposite reason — an untrained skill
+  check is ordinary, an untrained tool check is the GM saying you may try.
+
 - Unit tests for the actor-to-view-model mappers. These need no Foundry, no
   browser and no world, so unlike the smoke tests they can run in CI.
 
