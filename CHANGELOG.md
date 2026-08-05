@@ -90,6 +90,11 @@ All notable changes to Phonedry are recorded here. Versions follow
   name within each. Preparation toggles for spells the character actually
   prepares, casting through dnd5e's own activity pipeline, and badges for
   concentration, ritual and limited uses.
+- Spells granted by something other than the character's class — a subclass, a
+  species, a feat — are marked with a coloured stripe and the name of whatever
+  granted them. This is the answer to a question ordinary sheets leave open:
+  why the same spell appears on the list twice. Class spells are left unmarked,
+  because marking the ordinary case would leave nothing standing out.
 - Unit tests for the actor-to-view-model mappers. These need no Foundry, no
   browser and no world, so unlike the smoke tests they can run in CI.
 

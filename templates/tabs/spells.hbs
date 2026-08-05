@@ -45,7 +45,11 @@
 
       <ul class="phonedry-spells">
         {{#each this.spells}}
-          <li class="phonedry-spell {{#unless this.prepared}}phonedry-spell--unprepared{{/unless}}">
+          {{!-- The source stripe answers "why is this on my list twice?" — a
+                spell granted by a subclass or a species sits beside the same
+                spell from the class, and nothing on a normal sheet says which
+                is which. --}}
+          <li class="phonedry-spell {{#unless this.prepared}}phonedry-spell--unprepared{{/unless}}{{#if this.source}} phonedry-spell--granted phonedry-source--{{this.source.type}}{{/if}}">
 
             {{!-- The preparation toggle is a separate target from the spell
                   itself, because preparing and casting are different actions
@@ -72,6 +76,9 @@
                 {{#if this.range}} · {{this.range}}{{/if}}
                 {{#if this.concentration}} · {{localize "PHONEDRY.Spells.Concentration"}}{{/if}}
                 {{#if this.ritual}} · {{localize "PHONEDRY.Spells.Ritual"}}{{/if}}
+                {{#if this.source}}
+                  <span class="phonedry-spell__source">{{this.source.label}}</span>
+                {{/if}}
               </span>
             </button>
 

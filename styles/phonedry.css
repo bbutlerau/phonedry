@@ -1254,3 +1254,40 @@
   color: var(--phonedry-muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* -------------------------------------------- */
+/*  Spell sources                               */
+/* -------------------------------------------- */
+
+/*
+ * Where a spell came from, as a coloured stripe down its left edge.
+ *
+ * This exists to answer a question ordinary character sheets leave unanswered:
+ * why is the same spell on the list twice? A subclass or a species grants a
+ * spell the class already offers, and nothing distinguishes the two entries, so
+ * players assume the sheet is broken.
+ *
+ * Spells from the character's own class get no stripe. They are the ordinary
+ * case, and marking every one of them would leave nothing standing out.
+ */
+.phonedry-active .phonedry-spell--granted {
+  border-left: 3px solid var(--phonedry-source, var(--phonedry-muted));
+}
+
+.phonedry-active .phonedry-source--subclass { --phonedry-source: #9b7fd4; }
+.phonedry-active .phonedry-source--race,
+.phonedry-active .phonedry-source--species { --phonedry-source: var(--phonedry-ok); }
+.phonedry-active .phonedry-source--feat { --phonedry-source: var(--phonedry-info); }
+.phonedry-active .phonedry-source--background { --phonedry-source: #c98a4b; }
+.phonedry-active .phonedry-source--item { --phonedry-source: var(--phonedry-accent); }
+
+/* The stripe says "granted by something"; the name says by what. A colour
+   alone would be a code the player has to learn and remember. */
+.phonedry-active .phonedry-spell__source {
+  color: var(--phonedry-source, var(--phonedry-muted));
+}
+
+.phonedry-active .phonedry-spell__source::before {
+  content: " · ";
+  color: var(--phonedry-muted);
+}

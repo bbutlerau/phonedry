@@ -9,7 +9,8 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  buildSlots, buildSpellGroups, buildSpellsView, canPrepare, describeSpell, isPrepared, PREPARED
+  buildSlots, buildSourceIndex, buildSpellGroups, buildSpellsView, canPrepare,
+  describeSource, describeSpell, isPrepared, PREPARED
 } from "../../scripts/data/spells.mjs";
 
 const CONFIG_DND5E = {
@@ -23,7 +24,7 @@ const CONFIG_DND5E = {
  * @param {object} [overrides]
  * @returns {object}
  */
-function spell({ level = 1, method = "spell", prepared = 0, canPrepare, ...rest } = {}) {
+function spell({ level = 1, method = "spell", prepared = 0, canPrepare, sourceItem, ...rest } = {}) {
   return {
     id: rest.id ?? "spell-1",
     type: "spell",
@@ -44,7 +45,10 @@ function spell({ level = 1, method = "spell", prepared = 0, canPrepare, ...rest 
       ...(canPrepare === undefined ? {} : { canPrepare }),
 
       properties: new Set(rest.properties ?? []),
-      uses: rest.uses ?? {}
+      uses: rest.uses ?? {},
+
+      // dnd5e records where a granted spell came from as `type:identifier`.
+      ...(sourceItem === undefined ? {} : { sourceItem })
     },
     ...rest
   };
@@ -232,5 +236,66 @@ describe("buildSpellsView", () => {
 
     assert.equal(view.empty, false);
     assert.deepEqual(view.groups.flatMap(g => g.spells.map(sp => sp.name)), ["Bless"]);
+  });
+});
+
+/* -------------------------------------------- */
+
+describe("describeSource", () => {
+  const index = buildSourceIndex([
+    { type: "subclass", name: "Light Domain", system: { identifier: "light" } },
+    { type: "race", name: "Gnome, Forest", system: { identifier: "gnome-forest" } },
+    { type: "class", name: "Cleric", system: { identifier: "cleric" } }
+  ]);
+
+  it("says nothing about a spell from the character's own class", () => {
+    // The ordinary case. Marking every class spell would leave nothing
+    // standing out, which is the whole point of the stripe.
+    assert.equal(describeSource(spell({ sourceItem: "class:cleric" }), index), null);
+  });
+
+  it("names a subclass grant using the feature's own name", () => {
+    // "Light Domain", not "light" — the player has to know where to look.
+    assert.deepEqual(describeSource(spell({ sourceItem: "subclass:light" }), index),
+      { type: "subclass", label: "Light Domain" });
+  });
+
+  it("names a species grant", () => {
+    assert.deepEqual(describeSource(spell({ sourceItem: "race:gnome-forest" }), index),
+      { type: "race", label: "Gnome, Forest" });
+  });
+
+  it("falls back to the identifier when the feature is gone", () => {
+    // Ugly, but it still tells the player where the spell came from — better
+    // than dropping the explanation entirely.
+    assert.deepEqual(describeSource(spell({ sourceItem: "feat:magic-initiate" }), new Map()),
+      { type: "feat", label: "magic-initiate" });
+  });
+
+  it("says nothing when there is no source recorded", () => {
+    // A spell added by hand. Nothing to explain.
+    assert.equal(describeSource(spell()), null);
+    assert.equal(describeSource(spell({ sourceItem: "" })), null);
+  });
+
+  it("ignores a source it does not recognise", () => {
+    // dnd5e writes a bare UUID here in some cases, which is not something to
+    // put in front of a player.
+    assert.equal(describeSource(spell({ sourceItem: "Compendium.dnd5e.spells.Item.abc" })), null);
+  });
+});
+
+describe("buildSpellsView with sources", () => {
+  it("names the granting feature from the actor's own items", () => {
+    const view = buildSpellsView({
+      system: { spells: { spell1: { value: 2, max: 2, level: 1 } } },
+      items: [
+        spell({ id: "s1", name: "Faerie Fire", sourceItem: "subclass:light" }),
+        { type: "subclass", name: "Light Domain", system: { identifier: "light" } }
+      ]
+    }, CONFIG_DND5E);
+
+    const [spellView] = view.groups[0].spells;
+    assert.deepEqual(spellView.source, { type: "subclass", label: "Light Domain" });
   });
 });

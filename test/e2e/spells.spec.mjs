@@ -75,6 +75,20 @@ test.describe("spells", () => {
       "cantrips should not offer a preparation toggle"
     ).toHaveCount(0);
 
+    /* --- and spells granted by something other than the class are marked --- */
+
+    // The test character is a Forest Gnome, whose species grants Minor
+    // Illusion. Without the stripe it sits in the cantrip list looking exactly
+    // like the ones the class gave, which is the confusion this answers.
+    const granted = page.locator(".phonedry-spell--granted");
+    await expect(granted).not.toHaveCount(0);
+    await expect(granted.first().locator(".phonedry-spell__source")).not.toBeEmpty();
+
+    // Class spells stay unmarked — marking every one would leave nothing
+    // standing out.
+    const total = await page.locator(".phonedry-spell").count();
+    expect(await granted.count()).toBeLessThan(total);
+
     await context.close();
   });
 

@@ -78,17 +78,74 @@ export function isPrepared(spell) {
 /* -------------------------------------------- */
 
 /**
+ * Where a spell came from, as dnd5e records it in `system.sourceItem`:
+ * a `type:identifier` pair such as `class:cleric`, `subclass:light` or
+ * `race:gnome-forest`.
+ *
+ * `class` is deliberately absent. A spell from the character's own class is the
+ * ordinary case and needs no explanation; marking every one of them would leave
+ * nothing standing out. Everything here is a source a player is liable to
+ * forget about, which is what makes a spell appear twice on a list — once from
+ * the class and once granted by a subclass or a species — and wonder why.
+ */
+const SOURCE_TYPES = new Set(["subclass", "race", "species", "feat", "background", "item"]);
+
+/**
+ * Index the actor's own features by `type:identifier`, so a spell's source can
+ * be named rather than shown as a slug.
+ *
+ * @param {object[]} items  The actor's items.
+ * @returns {Map<string, string>} Keyed as dnd5e writes `sourceItem`.
+ */
+export function buildSourceIndex(items = []) {
+  const index = new Map();
+  for ( const item of items ) {
+    const identifier = item.system?.identifier;
+    if ( identifier ) index.set(`${item.type}:${identifier}`, item.name);
+  }
+  return index;
+}
+
+/**
+ * Describe where a spell came from, or null if it needs no explanation.
+ *
+ * @param {object} spell
+ * @param {Map<string, string>} [sourceIndex]
+ * @returns {{type: string, label: string}|null}
+ */
+export function describeSource(spell, sourceIndex = new Map()) {
+  const raw = spell.system?.sourceItem;
+  if ( typeof raw !== "string" ) return null;
+
+  const [type, identifier] = raw.split(":", 2);
+  if ( !identifier || !SOURCE_TYPES.has(type) ) return null;
+
+  return {
+    type,
+
+    // The feature's own name where the actor still has it — "Light Domain"
+    // rather than "light". Falls back to the identifier, which is ugly but
+    // still tells the player where to look.
+    label: sourceIndex.get(raw) ?? identifier
+  };
+}
+
+/* -------------------------------------------- */
+
+/**
  * Describe one spell for display.
  *
  * @param {object} spell  A spell item.
+ * @param {Map<string, string>} [sourceIndex]
  * @returns {object}
  */
-export function describeSpell(spell) {
+export function describeSpell(spell, sourceIndex) {
   const system = spell.system ?? {};
   const labels = spell.labels ?? {};
   const uses = system.uses ?? {};
 
   return {
+    source: describeSource(spell, sourceIndex),
     id: spell.id,
     name: spell.name,
     img: spell.img,
@@ -159,14 +216,15 @@ export function buildSlots(system, config) {
  * @param {object[]} spells  The actor's spell items.
  * @param {object} system    The actor's `system` data.
  * @param {object} config    `CONFIG.DND5E`.
+ * @param {Map<string, string>} [sourceIndex]  Feature names by `type:identifier`.
  * @returns {object[]}
  */
-export function buildSpellGroups(spells, system, config) {
+export function buildSpellGroups(spells, system, config, sourceIndex) {
   const slots = new Map(buildSlots(system, config).map(slot => [slot.level, slot]));
   const groups = new Map();
 
   for ( const spell of spells ) {
-    const described = describeSpell(spell);
+    const described = describeSpell(spell, sourceIndex);
     if ( !groups.has(described.level) ) groups.set(described.level, []);
     groups.get(described.level).push(described);
   }
@@ -200,11 +258,13 @@ export function buildSpellGroups(spells, system, config) {
  */
 export function buildSpellsView(actor, config) {
   const system = actor.system ?? {};
-  const spells = (actor.items ?? []).filter(item => item.type === "spell");
+  const items = actor.items ?? [];
+  const spells = items.filter(item => item.type === "spell");
+  const sourceIndex = buildSourceIndex(items);
 
   return {
     slots: buildSlots(system, config),
-    groups: buildSpellGroups(spells, system, config),
+    groups: buildSpellGroups(spells, system, config, sourceIndex),
     empty: spells.length === 0,
 
     dc: system.attributes?.spell?.dc ?? null,
