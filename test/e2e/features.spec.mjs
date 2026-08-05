@@ -32,16 +32,36 @@ test.describe("features", () => {
     /*
      * Six tabs at 393px is 65px each, and a label that wraps puts one tab on
      * two lines and grows the whole bar — which reads as a broken layout rather
-     * than as a long word. The claim is that they all sit on one line.
+     * than as a long word.
      */
     const tabRows = await page.locator(".phonedry-tabs__tab").evaluateAll(
       els => [...new Set(els.map(el => Math.round(el.getBoundingClientRect().top)))]
     );
     expect(tabRows, "the tab bar wrapped").toHaveLength(1);
 
-    expect(await page.evaluate(
-      () => document.documentElement.scrollWidth - window.innerWidth
-    )).toBeLessThanOrEqual(0);
+    /*
+     * And every label has room to spare inside its tab.
+     *
+     * This is the assertion that was missing. "Does not wrap" and "the page
+     * does not scroll sideways" were both true while `Features` rendered hard
+     * against the edge of a real iPhone with its label touching both sides:
+     * the shell sets `overflow: hidden`, so an overflowing bar is clipped
+     * rather than scrolled and neither check could see it. Font metrics differ
+     * enough between engines that a fit measured to the pixel in Chromium
+     * proves nothing on a device, so the claim is a few pixels of slack.
+     */
+    const labels = await page.locator(".phonedry-tabs__label").evaluateAll(
+      els => els.map(el => ({
+        text: el.textContent.trim(),
+        needed: el.scrollWidth,
+        available: el.closest(".phonedry-tabs__tab").clientWidth
+      }))
+    );
+
+    for ( const { text, needed, available } of labels ) {
+      expect(needed, `the "${text}" tab label has no room to spare`)
+        .toBeLessThanOrEqual(available - 6);
+    }
 
     /* --- tools, under skills --- */
 

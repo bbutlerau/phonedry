@@ -318,6 +318,46 @@ any time the change is to layout, gestures, input handling or anything touching
 a Foundry dialog — those are the areas where the two engines have actually
 disagreed.
 
+### Running the suite from a Mac
+
+Playwright's WebKit on this server is the **Ubuntu build**, and it lays text out
+through FreeType and fontconfig. iOS lays text out through CoreText — and so
+does Playwright's *macOS* WebKit build. That difference is not academic: the tab
+bar's "Features" label measured 43px on Linux and ran off the edge of a real
+iPhone, and neither engine here could see it.
+
+So the cheapest real improvement in coverage is to run the suite we already have
+on a Mac. Nothing needs moving: `playwright.config.mjs` reads
+`PHONEDRY_FOUNDRY_URL`, so a checkout on the laptop can drive the Foundry
+container on this server over Tailscale.
+
+```bash
+PHONEDRY_FOUNDRY_URL=http://<server>:30000 npm run test:webkit
+```
+
+Docker, the world, the bind-mount and the repo all stay where they are. It needs
+a checkout and `npx playwright install webkit`, and nothing else.
+
+What each rung above that actually buys, since it is easy to reach for the
+heaviest tool first:
+
+- **Playwright WebKit on macOS** catches font metrics and anything laid out from
+  text, because it shares CoreText with iOS. Free — same suite, same commands.
+- **Real Safari**, driven by `safaridriver` through WebDriver, is the only thing
+  that reproduces the dialog collapse: that was established on macOS Safari and
+  Playwright's WebKit does not show it on any platform. Costs a second suite in
+  Selenium rather than Playwright.
+- **The iOS Simulator**, driven by Appium's XCUITest driver, runs real Mobile
+  Safari — the touch callout, safe-area insets, iOS chrome. Xcode and macOS
+  only; there is no iOS emulator for Linux and no third-party equivalent.
+- **A real iPhone** remains the only thing that shows the memory ceiling, which
+  is the constraint the whole module exists to respect. No simulator reproduces
+  it, because it has the host's memory.
+
+Two classes of fault have now escaped every engine available here — the WebKit
+dialog collapse and the CoreText width difference — so treat a green run on this
+server as evidence about logic, and a device as the evidence about layout.
+
 Also worth remembering: a smoke test running a whole suite can break on a change
 that has nothing to do with it. Adding a tab broke an assertion pinning the
 exact contents of the tab bar. That is the test doing its job, not a

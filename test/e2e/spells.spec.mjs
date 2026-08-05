@@ -62,6 +62,20 @@ test.describe("spells", () => {
     // Slots first: it is the question asked before every cast.
     await expect(page.locator(".phonedry-slot").first()).toBeVisible();
 
+    /*
+     * And they are all the same height.
+     *
+     * The grid row measures a few pixels taller than any slot in it, and with
+     * the default stretch that gap was filled for the last slot only — so the
+     * fourth-level box stood visibly taller than the three beside it. Unlike
+     * most layout faults on this sheet, this one is plainly visible to
+     * Chromium, so it is worth asserting rather than leaving to a device.
+     */
+    const slotHeights = await page.locator(".phonedry-slot").evaluateAll(
+      els => [...new Set(els.map(el => Math.round(el.getBoundingClientRect().height)))]
+    );
+    expect(slotHeights, "the spell slot boxes are not all the same height").toHaveLength(1);
+
     // Level order, not alphabetical — cantrips lead.
     //
     // Read from the level headings only, and matched rather than compared: the

@@ -148,9 +148,32 @@
 
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  font: inherit;
   color: inherit;
   cursor: pointer;
+}
+
+/*
+ * The same normalisation, deliberately one class weaker.
+ *
+ * `font: inherit` belongs on every button — a browser's default is a system UI
+ * font at 13px, which has nothing to do with the rest of the sheet — but it was
+ * living in the rule above, at `.phonedry-active .phonedry-shell button`. That
+ * is two classes and an element, which outweighs every `.phonedry-thing` rule
+ * in this file, so *nine* per-button font sizes silently never applied and
+ * every button in the shell rendered at the inherited 16px instead. It went
+ * unnoticed for as long as nothing depended on the difference; the tab bar
+ * reaching six tabs is what finally made "Features" too wide for its cell on a
+ * real phone.
+ *
+ * Dropping `.phonedry-active` here is what fixes it. One class and an element
+ * still beats both the browser default and Foundry's own layered `button` rule,
+ * while losing to any `.phonedry-active .phonedry-thing` below — which is the
+ * order that was always intended. Scoping is not lost with it: `.phonedry-shell`
+ * exists only while the shell is rendered, and the shell renders only when the
+ * module has booted.
+ */
+.phonedry-shell button {
+  font: inherit;
 }
 
 /* Press feedback. Deliberately instant: any transition makes a quick tap feel
@@ -1230,13 +1253,24 @@
   justify-content: center;
   gap: 0.15rem;
 
-  /* Horizontal padding drops to nothing at six tabs. On a 393px phone each is
-     65px, and the label is what needs the room. */
-  padding: var(--phonedry-gap-sm) 0;
+  padding: var(--phonedry-gap-sm) 0.15rem;
   background: transparent;
   border: none;
   color: var(--phonedry-muted);
+
+  /* This never took effect until the `font: inherit` above was weakened — the
+     bar rendered at 16px, which is what made "Features" too wide for its cell
+     on a phone once there were six of them. */
   font-size: 0.6875rem;
+
+  /* min-width: 0 so a long label cannot force its column wider than its share.
+     Without it a grid track refuses to go below its content's intrinsic width,
+     which is what lets one tab push the others sideways. */
+  min-width: 0;
+}
+
+.phonedry-active .phonedry-tabs__tab i {
+  font-size: 1.0625rem;
 }
 
 /* A wrapped label would put one tab on two lines and grow the whole bar, which
@@ -1260,10 +1294,6 @@
   box-shadow: inset 0 2px 0 var(--phonedry-accent);
 }
 
-.phonedry-active .phonedry-tabs__tab i {
-  font-size: 1.125rem;
-}
-
 /* -------------------------------------------- */
 /*  Spells                                      */
 /* -------------------------------------------- */
@@ -1275,6 +1305,22 @@
   margin: 0;
   padding: 0;
   list-style: none;
+
+  /*
+   * Pinned rather than left to stretch, which is the default and was wrong.
+   *
+   * The grid row measures a few pixels taller than any slot in it — every slot
+   * is 47.8px on its own and the row comes out 51.8px, which I could trace to
+   * the slots' contribution to row sizing but not past that to a cause. The
+   * consequence was visible: stretching filled that gap for the *last* slot
+   * only, so the fourth-level box stood taller than the three beside it.
+   *
+   * Sizing each box to its own content removes the dependency on the row
+   * height entirely. Every slot holds the same two lines, so they come out
+   * identical, and the few pixels left under the row are invisible — the boxes
+   * carry the border and background, the list does not.
+   */
+  align-items: start;
 }
 
 .phonedry-active .phonedry-slot {

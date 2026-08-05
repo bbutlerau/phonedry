@@ -361,6 +361,28 @@ All notable changes to Phonedry are recorded here. Versions follow
   browser and no world, so unlike the smoke tests they can run in CI.
 
 ### Fixed
+- The highest spell slot box stood taller than the rest. The grid row measures a
+  few pixels taller than any slot in it, and the default stretch filled that gap
+  for the last slot only. Each box now sizes to its own content, so they match.
+- Every button in the sheet rendered at 16px regardless of the size the
+  stylesheet asked for. The shared rule that normalises button typography used
+  the `font` shorthand at a selector one class heavier than the per-button rules
+  below it, so nine separate font sizes — the tab bar, the advantage selector,
+  the ability check buttons, the browser controls and others — silently never
+  applied.
+
+  It went unnoticed for as long as nothing depended on the difference. What
+  exposed it was the tab bar reaching six tabs, at which point "Features" was
+  too wide for its cell and sat hard against the edge of the screen on a real
+  iPhone. Both Chromium and Playwright's WebKit rendered the same layout as a
+  snug fit, so no test saw it.
+
+  The normalisation now sits one class weaker, which still beats the browser
+  default and Foundry's own button rule while losing to anything more specific
+  in this stylesheet — the order that was always intended. The nine sizes now
+  take effect, so several controls are a little smaller and the ability check
+  buttons a little larger.
+
 - Following a link inside a description trapped the player. Descriptions are
   full of them — Radiance of the Dawn cites Darkness — and Foundry answers a
   click by opening that document's own sheet: a desktop application, sized for
