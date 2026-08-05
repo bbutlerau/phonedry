@@ -11,6 +11,30 @@ import { joinGame, reloadAt, collectErrors, PHONE_VIEWPORT } from "./helpers/fou
 
 const TOUCH = { ...devices["iPhone 15"], viewport: undefined };
 
+/**
+ * Press and hold an element.
+ *
+ * Playwright has no long-press primitive, so this drives the pointer directly.
+ * The element is scrolled into view first: raw mouse events do not scroll the
+ * way `click()` does, and pressing at coordinates below the fold silently
+ * reaches nothing at all.
+ *
+ * The finger does not move between down and up, because the gesture layer
+ * cancels a hold that drifts — which is what stops a panel appearing mid-scroll.
+ *
+ * @param {import("@playwright/test").Page} page
+ * @param {import("@playwright/test").Locator} locator
+ */
+async function longPress(page, locator) {
+  await locator.scrollIntoViewIfNeeded();
+  const box = await locator.boundingBox();
+
+  await page.mouse.move(box.x + (box.width / 2), box.y + (box.height / 2));
+  await page.mouse.down();
+  await page.waitForTimeout(800);
+  await page.mouse.up();
+}
+
 test.describe("spells", () => {
   test("the tab bar swaps sections", async ({ browser }) => {
     const context = await browser.newContext(TOUCH);
@@ -188,6 +212,41 @@ test.describe("spells", () => {
         () => game.modules.get("phonedry").api.shell.actor.items.filter(i => i.type === "spell").length
       )
     ).toBe(before);
+
+    expect(errors).toEqual([]);
+    await context.close();
+  });
+
+  test("holding a spell shows what it does, without casting it", async ({ browser }) => {
+    const context = await browser.newContext(TOUCH);
+    const page = await context.newPage();
+    const errors = collectErrors(page);
+
+    await joinGame(page);
+    await reloadAt(page, PHONE_VIEWPORT);
+    await page.locator('.phonedry-tabs__tab[data-tab="spells"]').click();
+
+    await expect(page.locator(".phonedry-describe")).toBeHidden();
+
+    const before = await page.evaluate(() => game.messages.size);
+    await longPress(page, page.locator(".phonedry-spell__cast", { hasText: "Cure Wounds" }).first());
+
+    await expect(page.locator(".phonedry-describe")).toBeVisible();
+    await expect(page.locator(".phonedry-describe__name")).toHaveText("Cure Wounds");
+
+    // The description is Foundry's markup until it is enriched — inline rolls
+    // and references would otherwise read as raw text on the page.
+    await expect(page.locator(".phonedry-describe__body")).toContainText("2d8");
+    const raw = await page.locator(".phonedry-describe__body").innerHTML();
+    expect(raw, "description was not enriched").not.toMatch(/\[\[|@UUID|&Reference/);
+
+    // The load-bearing assertion. A hold that also fired the tap would read the
+    // spell and cast it, spending a slot the player never meant to spend.
+    expect(await page.evaluate(() => game.messages.size),
+      "holding a spell also cast it").toBe(before);
+
+    await page.locator("[data-action='closeDescription']").click();
+    await expect(page.locator(".phonedry-describe")).toBeHidden();
 
     expect(errors).toEqual([]);
     await context.close();

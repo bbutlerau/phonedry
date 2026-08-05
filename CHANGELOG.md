@@ -109,6 +109,10 @@ All notable changes to Phonedry are recorded here. Versions follow
   afterwards costs a re-index of about ten seconds — so Phonedry declares them
   as index fields at startup instead, which adds them to the index Foundry was
   going to build anyway. The browser still opens in well under a second.
+- Holding a spell opens a panel describing what it does, enriched by Foundry so
+  inline rolls and rule references read as text rather than as markup. Holding
+  does not also cast: the tap that follows a hold is suppressed, or reading a
+  spell would spend a slot.
 - Unit tests for the actor-to-view-model mappers. These need no Foundry, no
   browser and no world, so unlike the smoke tests they can run in CI.
 

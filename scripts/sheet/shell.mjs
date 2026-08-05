@@ -24,6 +24,8 @@ import {
 } from "../rolls.mjs";
 import { applyDamage, applyHealing, applyTempHP, parseAmount } from "../hp.mjs";
 import { describeRoll, isOwnRoll, pushRoll } from "../data/roll-log.mjs";
+import { describeItem } from "../describe.mjs";
+import { bindLongPress } from "./gestures.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -43,6 +45,7 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       roll: PhonedryShell.#onRoll,
       rollTyped: PhonedryShell.#onRollTyped,
       rollInitiative: PhonedryShell.#onRollInitiative,
+      closeDescription: PhonedryShell.#onCloseDescription,
       closeSpellBrowser: PhonedryShell.#onCloseSpellBrowser,
       openSpellBrowser: PhonedryShell.#onOpenSpellBrowser,
       setRollMode: PhonedryShell.#onSetRollMode,
@@ -86,6 +89,9 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
 
     // A full-screen overlay, hidden until asked for.
     browser: { template: `modules/${MODULE_ID}/templates/parts/spell-browser.hbs` },
+
+    // What something is, opened by holding it.
+    describe: { template: `modules/${MODULE_ID}/templates/parts/describe.hbs` },
 
     // Always rendered, shown only by a media query. Whether a phone is being
     // held sideways is not something the shell should have to track.
@@ -174,6 +180,19 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /** How the browser's results are ordered. @type {string} */
   #browserSort = SORTS.NAME;
+
+  /**
+   * The description panel's contents, or null when it is closed.
+   *
+   * Held rather than derived, because enriching the HTML is asynchronous and a
+   * template cannot wait: the hold resolves it, stores it, then re-renders.
+   *
+   * @type {object|null}
+   */
+  #describe = null;
+
+  /** Removes the long-press listeners bound at the last render. @type {Function|null} */
+  #unbindLongPress = null;
 
   /**
    * Compendium index entries for every spell this character can learn.
@@ -322,6 +341,7 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       stats: actor ? buildStatsView(actor, CONFIG.DND5E) : null,
       spells: actor ? buildSpellsView(actor, CONFIG.DND5E) : null,
       browser: this.#prepareBrowser(actor),
+      describe: this.#describe,
 
       empty: actor ? null : {
         reason,
@@ -371,6 +391,7 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
 
     this.#applyRollMode();
     this.#applyHpEditorState();
+    this.#bindLongPress();
     this.#registerHooks();
 
     // Bound to the application root rather than to the field, because the field
@@ -418,6 +439,25 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
 
     editor.hidden = !this.#hpEditorOpen;
     toggle.setAttribute("aria-expanded", String(this.#hpEditorOpen));
+  }
+
+  /**
+   * Wire up holding a row to see what it is.
+   *
+   * Rebound on every render, because a partial re-render replaces the element
+   * the previous binding was attached to. The old binding is torn down first —
+   * without that, a sheet that has re-rendered five times would open five
+   * panels for one hold.
+   */
+  #bindLongPress() {
+    this.#unbindLongPress?.();
+    this.#unbindLongPress = bindLongPress(this.element, "[data-describe]", async target => {
+      const item = this.#actor?.items.get(target.dataset.describe);
+      if ( !item ) return;
+
+      this.#describe = await describeItem(item);
+      this.render({ parts: ["describe"] });
+    });
   }
 
   /**
@@ -689,6 +729,16 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
    *
    * @this {PhonedryShell}
    */
+  static #onCloseDescription() {
+    this.#describe = null;
+    this.render({ parts: ["describe"] });
+  }
+
+  /**
+   * Order the browser's results.
+   *
+   * @this {PhonedryShell}
+   */
   static #onSetSpellSort(event, target) {
     this.#browserSort = target.dataset.sort;
     this.render({ parts: ["browser"] });
@@ -741,6 +791,9 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /** @inheritdoc */
   _onClose(options) {
+    this.#unbindLongPress?.();
+    this.#unbindLongPress = null;
+
     this.element.removeEventListener("input", this.#onFormulaInput);
     this.element.removeEventListener("keydown", this.#onFormulaKey);
 

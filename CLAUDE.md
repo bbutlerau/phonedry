@@ -96,13 +96,19 @@ The two platforms fail differently, and both need testing:
   Build from scratch only when the dialog is thin — a choice the sheet already
   knows the answer to, or a confirmation. Say which of these applies before
   writing the code.
-- **Long-press is not available as a gesture.** iOS claims a hold to start a
-  text selection and raise its Copy / Look Up callout, which lands on top of
-  whatever the app was doing. `preventDefault` on `contextmenu` does not stop
-  it; `user-select: none` plus `-webkit-touch-callout: none` stops the
-  selection, but the gesture is still not worth building on. Anything that
-  needs a second action per control needs a visible control instead. This cost
-  a milestone's worth of gesture code to learn.
+- **Long-press needs `user-select: none` and `-webkit-touch-callout: none`.**
+  Without both, iOS claims a hold to start a text selection and raises its Copy
+  / Look Up callout over the app; `preventDefault` on `contextmenu` does not
+  stop it. The sheet sets both, so the gesture works — but it took removing an
+  advantage long-press to find that out, and the two were not in place together
+  until later.
+
+  It is still not the way to offer a *primary* action: a gesture is unmarked
+  and undiscoverable, which is why advantage is a visible control. It suits
+  secondary, inspect-style actions on rows whose obvious targets are already
+  spoken for — holding a spell for its description — and even then the sheet
+  says so in words. A hold that fires must also suppress the click that
+  follows, or it does both things at once.
 - Safe-area insets matter on both — notches on iOS, punch-hole cutouts and
   gesture bars on Android — and both need `viewport-fit=cover` to report
   anything but zero.

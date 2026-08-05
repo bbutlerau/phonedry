@@ -1523,3 +1523,135 @@
   font-size: 0.6875rem;
   color: var(--phonedry-muted);
 }
+
+/* -------------------------------------------- */
+/*  Description panel                           */
+/* -------------------------------------------- */
+
+/*
+ * What something is, opened by holding it.
+ *
+ * A long press is workable here only because the sheet already sets
+ * `user-select: none` and `-webkit-touch-callout: none`; without both, iOS
+ * turns the hold into a text selection and puts its own callout over the top.
+ * That is why an earlier attempt at this gesture was removed, and why it is
+ * used for an inspect-style action rather than for anything primary.
+ */
+.phonedry-active .phonedry-describe {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+
+  display: flex;
+  align-items: flex-end;
+
+  /* Dimmed rather than opaque: seeing the row it came from is most of what
+     tells a player which spell they are reading. */
+  background: rgb(0 0 0 / 55%);
+}
+
+.phonedry-active .phonedry-describe[hidden] {
+  display: none;
+}
+
+/*
+ * Anchored to the bottom, not centred. It arrives under the thumb that opened
+ * it, and the close control lands within reach rather than at the top of the
+ * screen.
+ */
+.phonedry-active .phonedry-describe__panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 75dvh;
+
+  background: var(--phonedry-surface);
+  border-top: 1px solid var(--phonedry-border);
+  border-radius: 0.75rem 0.75rem 0 0;
+
+  padding:
+    var(--phonedry-gap-lg)
+    calc(var(--phonedry-safe-right) + var(--phonedry-gap-lg))
+    calc(var(--phonedry-safe-bottom) + var(--phonedry-gap-lg))
+    calc(var(--phonedry-safe-left) + var(--phonedry-gap-lg));
+}
+
+.phonedry-active .phonedry-describe__head {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr auto;
+  align-items: center;
+  gap: var(--phonedry-gap-md);
+  flex: none;
+}
+
+.phonedry-active .phonedry-describe__icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: none;
+  border-radius: 0.25rem;
+  object-fit: cover;
+}
+
+.phonedry-active .phonedry-describe__titles {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.phonedry-active .phonedry-describe__name {
+  font-size: 1.125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.phonedry-active .phonedry-describe__subtitle {
+  font-size: 0.75rem;
+  color: var(--phonedry-muted);
+}
+
+.phonedry-active .phonedry-describe__close {
+  width: var(--phonedry-touch-target);
+  background: var(--phonedry-bg);
+  border: 1px solid var(--phonedry-border);
+  border-radius: 0.375rem;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.phonedry-active .phonedry-describe__body {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin-top: var(--phonedry-gap-lg);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+
+  /* The one place on the sheet where selecting text is wanted: a player may
+     well want to copy a spell's wording. */
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
+}
+
+/* Authored description markup, which arrives from the compendium rather than
+   from this module — so it is styled defensively rather than assumed. */
+.phonedry-active .phonedry-describe__body :where(p, ul, ol) { margin: 0 0 0.75em; }
+.phonedry-active .phonedry-describe__body :where(ul, ol) { padding-left: 1.25em; }
+.phonedry-active .phonedry-describe__body :where(h1, h2, h3, h4) {
+  border: none;
+  margin: 0 0 0.4em;
+  font-size: 1rem;
+}
+.phonedry-active .phonedry-describe__body :where(img) { max-width: 100%; height: auto; }
+.phonedry-active .phonedry-describe__body :where(table) {
+  width: 100%;
+  display: block;
+  overflow-x: auto;
+}
+
+/* Feedback while a press is being held, so the gesture is not silent until it
+   completes. */
+.phonedry-active .phonedry-holding {
+  background: var(--phonedry-surface-raised);
+}

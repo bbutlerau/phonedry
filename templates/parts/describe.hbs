@@ -1,0 +1,30 @@
+{{!--
+  What something is, opened by holding it.
+
+  A panel of Phonedry's own rather than dnd5e's item sheet, which is a desktop
+  application with tabs — and one of the windows that renders badly in WebKit.
+
+  CONSTRAINT: exactly one top-level element. See the note in header.hbs.
+--}}
+<div class="phonedry-describe" {{#unless describe}}hidden{{/unless}}>
+  {{#if describe}}
+    <div class="phonedry-describe__panel" role="dialog" aria-modal="true"
+         aria-label="{{describe.name}}">
+      <div class="phonedry-describe__head">
+        <img class="phonedry-describe__icon" src="{{describe.img}}" alt="" />
+        <span class="phonedry-describe__titles">
+          <span class="phonedry-describe__name">{{describe.name}}</span>
+          {{#if describe.subtitle}}
+            <span class="phonedry-describe__subtitle">{{describe.subtitle}}</span>
+          {{/if}}
+        </span>
+        <button type="button" class="phonedry-describe__close" data-action="closeDescription"
+                aria-label="{{localize 'PHONEDRY.Describe.Close'}}">&times;</button>
+      </div>
+
+      {{!-- Enriched by Foundry before it reaches here, so inline rolls and
+            references read as text rather than as markup. --}}
+      <div class="phonedry-describe__body">{{{describe.html}}}</div>
+    </div>
+  {{/if}}
+</div>

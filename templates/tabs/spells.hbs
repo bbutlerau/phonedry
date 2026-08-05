@@ -76,7 +76,8 @@
             {{/if}}
 
             <button type="button" class="phonedry-spell__cast"
-                    data-action="castSpell" data-spell-id="{{this.id}}">
+                    data-action="castSpell" data-spell-id="{{this.id}}"
+                    data-describe="{{this.id}}">
               <span class="phonedry-spell__name">{{this.name}}</span>
               <span class="phonedry-spell__meta">
                 {{#if this.activation}}{{this.activation}}{{/if}}
@@ -98,5 +99,8 @@
       </ul>
     </section>
   {{/each}}
+
+  {{!-- Said in words because a hold is invisible until someone tries it. --}}
+  <p class="phonedry-section__note">{{localize "PHONEDRY.Describe.Hint"}}</p>
 
 {{/if}}

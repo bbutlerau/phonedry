@@ -89,6 +89,10 @@
       "SortLevel": "Level",
       "SortName": "Name",
       "SortSchool": "School"
+    },
+    "Describe": {
+      "Close": "Close",
+      "Hint": "Hold a spell to read what it does."
     }
   }
 }
