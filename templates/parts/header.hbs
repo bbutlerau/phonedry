@@ -24,15 +24,55 @@
     </div>
 
     {{!-- Hit points get the full width and a bar: it is the only number here
-          that changes every round, and the one people read at a glance. --}}
-    <div class="phonedry-hp {{#if stats.header.hp.unconscious}}phonedry-hp--down{{else if stats.header.hp.bloodied}}phonedry-hp--bloodied{{/if}}">
-      <div class="phonedry-hp__bar" style="--phonedry-hp-pct: {{stats.header.hp.pct}}%"></div>
-      <div class="phonedry-hp__text">
+          that changes every round, and the one people read at a glance.
+
+          The whole bar is the button that opens the editor. Tapping the number
+          you want to change is the obvious gesture, and it gives the largest
+          target on the sheet to the thing reached for most often mid-fight.
+          Spans throughout, because a <button> may not contain a <div>. --}}
+    <button type="button"
+            class="phonedry-hp {{#if stats.header.hp.unconscious}}phonedry-hp--down{{else if stats.header.hp.bloodied}}phonedry-hp--bloodied{{/if}}"
+            data-action="toggleHpEditor" aria-expanded="false" aria-controls="phonedry-hp-editor">
+      <span class="phonedry-hp__bar" style="--phonedry-hp-pct: {{stats.header.hp.pct}}%"></span>
+      <span class="phonedry-hp__text">
         <span class="phonedry-hp__label">{{localize "PHONEDRY.Sheet.HitPoints"}}</span>
         <span class="phonedry-hp__value">
           {{stats.header.hp.value}}<span class="phonedry-hp__sep">/</span>{{stats.header.hp.max}}
           {{#if stats.header.hp.temp}}<span class="phonedry-hp__temp">+{{stats.header.hp.temp}}</span>{{/if}}
         </span>
+      </span>
+    </button>
+
+    {{!-- Hidden until the bar is tapped. The `hidden` attribute rather than a
+          class, so it is inert to assistive technology as well as invisible. --}}
+    <div class="phonedry-hp-editor" id="phonedry-hp-editor" hidden>
+      <div class="phonedry-hp-editor__amount">
+        <button type="button" class="phonedry-hp-editor__step"
+                data-action="stepHp" data-step="-1"
+                aria-label="{{localize 'PHONEDRY.HitPoints.Decrease'}}">&minus;</button>
+
+        {{!-- `inputmode` rather than `type="number"`: it raises the numeric
+              keypad on both platforms without the spinner arrows, which are
+              mouse furniture and shrink the field on a narrow screen. --}}
+        <input type="text" inputmode="numeric" pattern="[0-9]*"
+               class="phonedry-hp-editor__input" name="hpAmount"
+               placeholder="0" autocomplete="off"
+               aria-label="{{localize 'PHONEDRY.HitPoints.Amount'}}" />
+
+        <button type="button" class="phonedry-hp-editor__step"
+                data-action="stepHp" data-step="1"
+                aria-label="{{localize 'PHONEDRY.HitPoints.Increase'}}">+</button>
+      </div>
+
+      {{!-- Direction is the button, not a sign on the number. "Damage 5" and
+            "Heal 5" cannot be confused the way "-5" and "5" can. --}}
+      <div class="phonedry-hp-editor__actions">
+        <button type="button" class="phonedry-hp-editor__action phonedry-hp-editor__action--damage"
+                data-action="applyHp" data-hp="damage">{{localize "PHONEDRY.HitPoints.Damage"}}</button>
+        <button type="button" class="phonedry-hp-editor__action phonedry-hp-editor__action--heal"
+                data-action="applyHp" data-hp="heal">{{localize "PHONEDRY.HitPoints.Heal"}}</button>
+        <button type="button" class="phonedry-hp-editor__action"
+                data-action="applyHp" data-hp="temp">{{localize "PHONEDRY.HitPoints.Temp"}}</button>
       </div>
     </div>
 

@@ -40,6 +40,17 @@
       "Failed": "Phonedry could not roll {what}. See the console for details."
     },
 
+    "HitPoints": {
+      "Amount": "Amount",
+      "Damage": "Damage",
+      "Decrease": "One less",
+      "Failed": "Phonedry could not apply {what}. See the console for details.",
+      "Heal": "Heal",
+      "Increase": "One more",
+      "NeedAmount": "Enter how many hit points first.",
+      "Temp": "Temp"
+    },
+
     "Rotate": {
       "Message": "Turn your phone upright to use the character sheet."
     },

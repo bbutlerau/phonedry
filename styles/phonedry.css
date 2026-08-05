@@ -220,10 +220,20 @@
 
 .phonedry-active .phonedry-hp {
   position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
   margin-top: var(--phonedry-gap-md);
   border: 1px solid var(--phonedry-border);
   border-radius: 0.375rem;
   overflow: hidden;
+  background: var(--phonedry-bg);
+  text-align: left;
+}
+
+/* The bar already signals state; letting the button's generic press style
+   repaint the whole strip would wash that out. */
+.phonedry-active .phonedry-hp:active {
   background: var(--phonedry-bg);
 }
 
@@ -263,6 +273,82 @@
 
 .phonedry-active .phonedry-hp__sep { color: var(--phonedry-muted); margin: 0 0.1em; }
 .phonedry-active .phonedry-hp__temp { color: var(--phonedry-info); margin-left: 0.35em; }
+
+/* -------------------------------------------- */
+/*  Hit point editor                            */
+/* -------------------------------------------- */
+
+.phonedry-active .phonedry-hp-editor {
+  margin-top: var(--phonedry-gap-sm);
+  padding: var(--phonedry-gap-md);
+  background: var(--phonedry-bg);
+  border: 1px solid var(--phonedry-border);
+  border-radius: 0.375rem;
+}
+
+.phonedry-active .phonedry-hp-editor__amount {
+  display: grid;
+  grid-template-columns: var(--phonedry-touch-target) 1fr var(--phonedry-touch-target);
+  gap: var(--phonedry-gap-md);
+  align-items: stretch;
+}
+
+.phonedry-active .phonedry-hp-editor__step {
+  background: var(--phonedry-surface);
+  border: 1px solid var(--phonedry-border);
+  border-radius: 0.375rem;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.phonedry-active .phonedry-hp-editor__input {
+  min-height: var(--phonedry-touch-target);
+  width: 100%;
+  padding: 0 var(--phonedry-gap-md);
+
+  background: var(--phonedry-surface);
+  border: 1px solid var(--phonedry-border);
+  border-radius: 0.375rem;
+  color: var(--phonedry-text);
+
+  /* 16px is the threshold below which iOS zooms the page on focus, and that
+     zoom is not undone when the field is blurred — it leaves the sheet scaled
+     up with no obvious way back. Nothing focusable may be smaller than this. */
+  font-size: 1rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+
+  /* The field is the one place on the sheet where selection has to work, so it
+     opts out of the blanket rule that keeps iOS from raising its callout. */
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* The focus ring is stated rather than left to the browser, whose default is a
+   colour from outside the sheet's palette. */
+.phonedry-active .phonedry-shell :focus-visible {
+  outline: 2px solid var(--phonedry-accent);
+  outline-offset: -2px;
+}
+
+.phonedry-active .phonedry-hp-editor__actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--phonedry-gap-md);
+  margin-top: var(--phonedry-gap-md);
+}
+
+.phonedry-active .phonedry-hp-editor__action {
+  background: var(--phonedry-surface);
+  border: 1px solid var(--phonedry-border);
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.phonedry-active .phonedry-hp-editor__action--damage { border-color: var(--phonedry-bad); }
+.phonedry-active .phonedry-hp-editor__action--heal { border-color: var(--phonedry-ok); }
 
 /* -------------------------------------------- */
 /*  Vitals                                      */
@@ -699,6 +785,40 @@
 }
 
 /* -------------------------------------------- */
+/*  dnd5e's roll dialog                         */
+/* -------------------------------------------- */
+
+/*
+ * Initiative is the one roll that still opens dnd5e's own dialog, because it is
+ * the only entry point that files the result with the combat tracker properly.
+ *
+ * The dialog is already responsive and sits on screen at phone width, so this
+ * is not a reskin — it brings the parts a finger has to hit up to the same
+ * 44px floor the rest of the sheet holds to. Its buttons ship at 36px and its
+ * close control at 20px square, which are mouse sizes.
+ *
+ * Scoped under `.phonedry-active` so a desktop player sharing the world is
+ * unaffected.
+ */
+.phonedry-active .roll-configuration button {
+  min-height: var(--phonedry-touch-target);
+}
+
+.phonedry-active .roll-configuration .header-control,
+.phonedry-active .roll-configuration [data-action="close"] {
+  min-width: var(--phonedry-touch-target);
+  min-height: var(--phonedry-touch-target);
+}
+
+/* Same reason as the hit point field: anything under 16px makes iOS zoom the
+   page on focus and leave it zoomed. */
+.phonedry-active .roll-configuration input,
+.phonedry-active .roll-configuration select {
+  min-height: var(--phonedry-touch-target);
+  font-size: 1rem;
+}
+
+/* -------------------------------------------- */
 /*  Portrait lock                               */
 /* -------------------------------------------- */
 
@@ -722,7 +842,17 @@
   display: none;
 }
 
-@media (orientation: landscape) and (max-height: 500px) {
+/*
+ * The `min-width` is a guard, not a second opinion on device size.
+ *
+ * Browsers derive CSS orientation from the viewport's own proportions, not from
+ * how the device is being held. Android shrinks the viewport when the on-screen
+ * keyboard opens, and with the hit point editor focused that can leave a
+ * portrait phone shorter than it is wide — which would match a landscape query
+ * and throw "turn your phone upright" over someone in the middle of typing.
+ * A landscape phone is at least 600px across; a portrait one never is.
+ */
+@media (orientation: landscape) and (max-height: 500px) and (min-width: 600px) {
   .phonedry-active .phonedry-rotate {
     display: flex;
     position: fixed;

@@ -173,6 +173,122 @@ test.describe("stats screen", () => {
     await context.close();
   });
 
+  test("hit points can be edited from the sheet", async ({ browser }) => {
+    const context = await browser.newContext(TOUCH);
+    const page = await context.newPage();
+    const errors = collectErrors(page);
+
+    await joinGame(page);
+    await reloadAt(page, PHONE_VIEWPORT);
+
+    const hp = () => page.evaluate(
+      () => game.modules.get("phonedry").api.shell.actor.system.attributes.hp
+    );
+    const before = await hp();
+
+    const editor = page.locator(".phonedry-hp-editor");
+    await expect(editor).toBeHidden();
+
+    // The whole bar is the target — the largest control on the sheet, for the
+    // thing reached for most often mid-fight.
+    await page.locator("[data-action='toggleHpEditor']").click();
+    await expect(editor).toBeVisible();
+
+    await page.locator(".phonedry-hp-editor__input").fill("7");
+    await page.locator("[data-hp='damage']").click();
+    await expect.poll(async () => (await hp()).value).toBe(before.value - 7);
+
+    // The panel stays open and the amount clears: damage arrives in a run, but
+    // rarely twice at the same size.
+    await expect(editor).toBeVisible();
+    await expect(page.locator(".phonedry-hp-editor__input")).toHaveValue("");
+    await expect(page.locator(".phonedry-hp__value")).toContainText(`${before.value - 7}/`);
+
+    await page.locator(".phonedry-hp-editor__input").fill("3");
+    await page.locator("[data-hp='heal']").click();
+    await expect.poll(async () => (await hp()).value).toBe(before.value - 4);
+
+    // Healing stops at the maximum rather than running over it. dnd5e enforces
+    // that, which is precisely why the arithmetic is delegated.
+    await page.locator(".phonedry-hp-editor__input").fill("999");
+    await page.locator("[data-hp='heal']").click();
+    await expect.poll(async () => (await hp()).value).toBe(before.max);
+
+    await page.locator(".phonedry-hp-editor__input").fill("5");
+    await page.locator("[data-hp='temp']").click();
+    await expect.poll(async () => (await hp()).temp).toBe(5);
+
+    // Temporary hit points absorb damage before real ones do.
+    await page.locator(".phonedry-hp-editor__input").fill("2");
+    await page.locator("[data-hp='damage']").click();
+    await expect.poll(async () => (await hp()).temp).toBe(3);
+    expect((await hp()).value).toBe(before.max);
+
+    // Restore, so the suite can be run repeatedly without drift.
+    await page.evaluate(hp => game.modules.get("phonedry").api.shell.actor.update({
+      "system.attributes.hp.value": hp.value,
+      "system.attributes.hp.temp": hp.temp ?? 0
+    }), before);
+
+    expect(errors).toEqual([]);
+    await context.close();
+  });
+
+  test("the steppers adjust the amount without a keyboard", async ({ browser }) => {
+    const context = await browser.newContext(TOUCH);
+    const page = await context.newPage();
+
+    await joinGame(page);
+    await reloadAt(page, PHONE_VIEWPORT);
+    await page.locator("[data-action='toggleHpEditor']").click();
+
+    const input = page.locator(".phonedry-hp-editor__input");
+    await page.locator("[data-step='1']").click();
+    await page.locator("[data-step='1']").click();
+    await expect(input).toHaveValue("2");
+
+    // Never negative: direction is the Damage or Heal button, so a negative
+    // amount has nothing to mean.
+    for ( let i = 0; i < 4; i++ ) await page.locator("[data-step='-1']").click();
+    await expect(input).toHaveValue("0");
+
+    await context.close();
+  });
+
+  test("initiative opens dnd5e's dialog at the sheet's roll mode", async ({ browser }) => {
+    const context = await browser.newContext(TOUCH);
+    const page = await context.newPage();
+
+    await joinGame(page);
+    await reloadAt(page, PHONE_VIEWPORT);
+
+    await page.locator('[data-mode="advantage"]').click();
+    await page.locator("[data-action='rollInitiative']").click();
+
+    const dialog = page.locator(".roll-configuration");
+    await expect(dialog).toBeVisible();
+
+    // The sheet said advantage; the dialog must not open saying Normal.
+    // dnd5e does not mark the active mode on the buttons, so the formula it
+    // shows is the honest place to read it — "1d20adv + 3" rather than "1d20".
+    await expect(
+      dialog.locator(".formula, .dice-formula"),
+      "initiative dialog ignored the sheet's roll mode"
+    ).toContainText("adv");
+
+    // Everything a finger has to hit meets the same floor as the sheet.
+    const undersized = await dialog.locator("button").evaluateAll(
+      els => els
+        .filter(el => el.offsetParent !== null)
+        .map(el => ({ t: el.textContent.trim().slice(0, 20), h: el.getBoundingClientRect().height }))
+        .filter(el => el.h < 44)
+    );
+    expect(undersized).toEqual([]);
+
+    await page.keyboard.press("Escape");
+    await context.close();
+  });
+
   test("a phone on its side asks to be turned back", async ({ browser }) => {
     const context = await browser.newContext(TOUCH);
     const page = await context.newPage();

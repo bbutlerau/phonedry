@@ -45,6 +45,16 @@ All notable changes to Phonedry are recorded here. Versions follow
   forgotten setting cannot quietly skew a session.
 - Text selection is disabled across the sheet, which stops iOS turning a slow
   tap on a label into a Copy / Look Up callout over the top of it.
+- Hit points can be edited from the sheet. Tapping the bar — the largest
+  target on the screen, for the thing reached for most often mid-fight — opens
+  an amount field with Damage, Heal and Temp buttons, plus steppers for
+  adjusting by one without raising the keyboard. Direction is chosen by the
+  button rather than by a minus sign, so "damage 5" and "heal 5" cannot be
+  confused. The arithmetic is dnd5e's: temporary hit points absorb damage
+  first, healing stops at the maximum, and damage stops at zero.
+- Initiative's dialog now opens on whatever the sheet's advantage selector is
+  set to, instead of contradicting it, and its buttons and close control are
+  brought up to the same 44px tap target the rest of the sheet holds to.
 - Death saves appear on the sheet only while the character is at zero hit
   points, showing successes and failures as pips with a roll button.
 - Proficiency is shown as four distinct states — none, half, proficient and

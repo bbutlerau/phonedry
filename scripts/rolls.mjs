@@ -158,11 +158,17 @@ export function rollDeathSave(actor, mode = ROLL_MODE.NORMAL) {
  * Initiative is rolled once per fight rather than constantly, so one extra
  * confirmation is a fair price for landing in the tracker correctly.
  *
+ * The sheet's roll mode is passed through so the dialog opens on the same
+ * setting the rest of the sheet is using. dnd5e merges these over the values it
+ * works out itself, so a mode set here wins — and without it the sheet would
+ * claim advantage while the dialog in front of the player said Normal.
+ *
  * @param {Actor} actor
+ * @param {string} [mode]  A ROLL_MODE value.
  * @returns {Promise<void|null>}
  */
-export function rollInitiative(actor) {
-  return attempt(() => actor.rollInitiativeDialog(), "initiative");
+export function rollInitiative(actor, mode = ROLL_MODE.NORMAL) {
+  return attempt(() => actor.rollInitiativeDialog(modeFlags(mode)), "initiative");
 }
 
 /* -------------------------------------------- */

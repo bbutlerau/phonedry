@@ -18,6 +18,7 @@ import {
   ROLL_MODE, rollAbilityCheck, rollSavingThrow, rollSkill,
   rollDeathSave, rollInitiative
 } from "../rolls.mjs";
+import { applyDamage, applyHealing, applyTempHP, parseAmount } from "../hp.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -31,9 +32,12 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       positioned: false
     },
     actions: {
+      applyHp: PhonedryShell.#onApplyHp,
       roll: PhonedryShell.#onRoll,
       rollInitiative: PhonedryShell.#onRollInitiative,
-      setRollMode: PhonedryShell.#onSetRollMode
+      setRollMode: PhonedryShell.#onSetRollMode,
+      stepHp: PhonedryShell.#onStepHp,
+      toggleHpEditor: PhonedryShell.#onToggleHpEditor
     }
   };
 
@@ -91,6 +95,17 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   get rollMode() {
     return this.#rollMode;
   }
+
+  /**
+   * Whether the hit point editor is showing.
+   *
+   * Kept here rather than read back off the DOM because a re-render replaces
+   * the DOM, and hit points are exactly what re-renders the header — so the
+   * panel would close itself the moment it was used.
+   *
+   * @type {boolean}
+   */
+  #hpEditorOpen = false;
 
   /**
    * The viewport width at the last render, used to tell a rotation apart from a
@@ -161,6 +176,7 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
     super._onRender(context, options);
 
     this.#applyRollMode();
+    this.#applyHpEditorState();
     this.#registerHooks();
 
     // Re-registering the same function reference for the same event is a no-op
@@ -186,6 +202,30 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
     for ( const button of this.element.querySelectorAll("[data-action='setRollMode']") ) {
       button.setAttribute("aria-pressed", String(button.dataset.mode === this.#rollMode));
     }
+  }
+
+  /**
+   * Show or hide the hit point editor to match the stored state.
+   *
+   * Also runs after every render, which is what keeps the panel open across the
+   * re-render that applying damage causes — otherwise taking damage twice in a
+   * row would mean reopening the panel in between.
+   */
+  #applyHpEditorState() {
+    const editor = this.element.querySelector(".phonedry-hp-editor");
+    const toggle = this.element.querySelector("[data-action='toggleHpEditor']");
+    if ( !editor || !toggle ) return;
+
+    editor.hidden = !this.#hpEditorOpen;
+    toggle.setAttribute("aria-expanded", String(this.#hpEditorOpen));
+  }
+
+  /**
+   * The hit point editor's amount field.
+   * @returns {HTMLInputElement|null}
+   */
+  get #hpInput() {
+    return this.element.querySelector(".phonedry-hp-editor__input");
   }
 
   /**
@@ -262,14 +302,85 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
-   * Initiative keeps dnd5e's own dialog, so the roll mode does not apply to it
-   * — the dialog offers the same choice, and it is the only entry point that
-   * places the actor into the combat tracker correctly.
+   * Initiative keeps dnd5e's own dialog, because it is the only entry point
+   * that places the actor into the combat tracker correctly. The sheet's roll
+   * mode is handed to it so the dialog opens on the setting the player already
+   * chose rather than contradicting the header.
    *
    * @this {PhonedryShell}
    */
   static #onRollInitiative() {
-    if ( this.actor ) rollInitiative(this.actor);
+    if ( this.actor ) rollInitiative(this.actor, this.rollMode);
+  }
+
+  /* -------------------------------------------- */
+
+  /**
+   * Open or close the hit point editor.
+   *
+   * Focus moves to the amount field on opening, which saves a second tap. It is
+   * deliberately not done on a re-render — pulling focus while someone is
+   * reading their sheet would raise the keyboard unbidden.
+   *
+   * @this {PhonedryShell}
+   */
+  static #onToggleHpEditor() {
+    this.#hpEditorOpen = !this.#hpEditorOpen;
+    this.#applyHpEditorState();
+    if ( this.#hpEditorOpen ) this.#hpInput?.focus();
+  }
+
+  /**
+   * Nudge the amount by one.
+   *
+   * Worth having alongside the keyboard: a single point of damage or healing is
+   * common enough, and these are two taps with no keyboard at all.
+   *
+   * @this {PhonedryShell}
+   * @param {PointerEvent} event
+   * @param {HTMLElement} target
+   */
+  static #onStepHp(event, target) {
+    const input = this.#hpInput;
+    if ( !input ) return;
+
+    const next = (Number.parseInt(input.value, 10) || 0) + Number(target.dataset.step);
+
+    // Never below zero. Direction is chosen by the Damage or Heal button, so a
+    // negative amount here has no meaning to express.
+    input.value = String(Math.max(0, next));
+  }
+
+  /**
+   * Apply the typed amount as damage, healing or temporary hit points.
+   *
+   * @this {PhonedryShell}
+   * @param {PointerEvent} event
+   * @param {HTMLElement} target
+   */
+  static async #onApplyHp(event, target) {
+    const input = this.#hpInput;
+    if ( !this.actor || !input ) return;
+
+    const amount = parseAmount(input.value);
+    if ( amount === null ) {
+      ui.notifications?.warn(game.i18n.localize("PHONEDRY.HitPoints.NeedAmount"));
+      input.focus();
+      return;
+    }
+
+    switch ( target.dataset.hp ) {
+      case "damage": await applyDamage(this.actor, amount); break;
+      case "heal": await applyHealing(this.actor, amount); break;
+      case "temp": await applyTempHP(this.actor, amount); break;
+      default: return;
+    }
+
+    // Clearing rather than keeping the amount: the next change is rarely the
+    // same size, and a stale number left in the field is a mis-tap waiting to
+    // happen. The panel stays open, because damage tends to arrive in a run.
+    const cleared = this.#hpInput;
+    if ( cleared ) cleared.value = "";
   }
 
   /* -------------------------------------------- */
