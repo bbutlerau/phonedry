@@ -791,8 +791,7 @@
 /*
  * Foundry reports roll results in chat, and chat lives in the sidebar this
  * module suppresses — so without this panel the sheet rolls correctly and
- * silently. It sits at the bottom, within reach of a thumb, and takes no height
- * at all until the first roll of the session.
+ * silently. It sits at the bottom, within reach of a thumb.
  */
 .phonedry-active .phonedry-log {
   flex: none;
@@ -901,6 +900,42 @@
 
 .phonedry-active .phonedry-log__entry + .phonedry-log__entry {
   border-top: 1px solid var(--phonedry-border);
+}
+
+/* Type a roll, like Foundry's /r. */
+.phonedry-active .phonedry-log__formula {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--phonedry-gap-md);
+  padding: var(--phonedry-gap-md) var(--phonedry-gap-lg);
+  border-bottom: 1px solid var(--phonedry-border);
+}
+
+.phonedry-active .phonedry-log__formula-input {
+  min-height: var(--phonedry-touch-target);
+  padding: 0 var(--phonedry-gap-md);
+
+  background: var(--phonedry-bg);
+  border: 1px solid var(--phonedry-border);
+  border-radius: 0.375rem;
+  color: var(--phonedry-text);
+
+  /* Under 16px iOS zooms the page on focus and does not zoom back out. */
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.phonedry-active .phonedry-log__formula-roll {
+  padding: 0 var(--phonedry-gap-lg);
+  background: var(--phonedry-surface-raised);
+  border: 1px solid var(--phonedry-accent);
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 /* -------------------------------------------- */

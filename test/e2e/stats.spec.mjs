@@ -54,15 +54,9 @@ test.describe("stats screen", () => {
     await expect(page.locator(".phonedry-hp__value")).toContainText("/");
     expect(errors).toEqual([]);
 
-    await context.close();
-  });
 
-  test("every roll control is big enough to hit with a finger", async ({ browser }) => {
-    const context = await browser.newContext(TOUCH);
-    const page = await context.newPage();
+    /* --- tap targets, and no selectable text --- */
 
-    await joinGame(page);
-    await reloadAt(page, PHONE_VIEWPORT);
 
     // 44px is the floor the stylesheet sets, and it is easy to lose to a
     // grid or flex rule that shrinks a row without anyone noticing.
@@ -75,9 +69,44 @@ test.describe("stats screen", () => {
         .filter(el => el.height < 44)
     );
     expect(undersized).toEqual([]);
+    // iOS turns a slow tap on a label into a text selection and a Copy /
+    // Look Up callout over the sheet. This is the rule that prevents it, and
+    // it cannot be verified anywhere but on the device — so the least this can
+    // do is fail loudly if the rule is ever dropped.
+
+
+    // Both spellings are checked because WebKit needs the prefixed one and does
+    // not implement the standard property at all — `CSS.supports("user-select",
+    // "none")` is false there. That is exactly why the stylesheet declares
+    // both, and reading only the unprefixed name reports every row as
+    // selectable on the one engine that matters most here.
+    const selectable = await page.locator(".phonedry-skill__name").evaluateAll(
+      els => els.filter(el => {
+        const style = getComputedStyle(el);
+        return (style.webkitUserSelect ?? style.userSelect) !== "none";
+      }).length
+    );
+    expect(selectable).toBe(0);
+
+    // The property is a proxy for the behaviour; this is the behaviour. If a
+    // future engine drops the prefix, the check above could pass while text
+    // stayed selectable.
+    const selected = await page.evaluate(() => {
+      const el = document.querySelector(".phonedry-skill__name");
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const selection = getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      const text = selection.toString();
+      selection.removeAllRanges();
+      return text;
+    });
+    expect(selected, "skill labels can still be selected as text").toBe("");
 
     await context.close();
   });
+
 
   test("tapping a skill rolls it through dnd5e", async ({ browser }) => {
     const context = await browser.newContext(TOUCH);
@@ -102,15 +131,9 @@ test.describe("stats screen", () => {
     expect(flavour).toContain("Athletics");
 
     expect(errors).toEqual([]);
-    await context.close();
-  });
 
-  test("tapping an ability rolls a check, and its save button rolls a save", async ({ browser }) => {
-    const context = await browser.newContext(TOUCH);
-    const page = await context.newPage();
+    /* --- and the same for abilities --- */
 
-    await joinGame(page);
-    await reloadAt(page, PHONE_VIEWPORT);
 
     await page.locator('[data-roll="check"][data-roll-key="wis"]').click();
     await expect.poll(
@@ -127,6 +150,7 @@ test.describe("stats screen", () => {
 
     await context.close();
   });
+
 
   test("the advantage selector changes the formula of the next roll", async ({ browser }) => {
     const context = await browser.newContext(TOUCH);
@@ -245,17 +269,10 @@ test.describe("stats screen", () => {
     }), before);
 
     expect(errors).toEqual([]);
-    await context.close();
-  });
 
-  test("the steppers adjust the amount without a keyboard", async ({ browser }) => {
-    const context = await browser.newContext(TOUCH);
-    const page = await context.newPage();
+    /* --- steppers, and a change from outside the sheet --- */
 
-    await joinGame(page);
-    await reloadAt(page, PHONE_VIEWPORT);
-    await page.locator("[data-action='toggleHpEditor']").click();
-
+    // The editor is still open from above.
     const input = page.locator(".phonedry-hp-editor__input");
     await page.locator("[data-step='1']").click();
     await page.locator("[data-step='1']").click();
@@ -266,8 +283,27 @@ test.describe("stats screen", () => {
     for ( let i = 0; i < 4; i++ ) await page.locator("[data-step='-1']").click();
     await expect(input).toHaveValue("0");
 
+
+    // Damage applied by the GM is the normal case, and a sheet that needed a
+    // manual refresh to notice would be useless in a fight.
+    const restore = await page.evaluate(async () => {
+      const actor = game.modules.get("phonedry").api.shell.actor;
+      const previous = actor.system.attributes.hp.value;
+      await actor.update({ "system.attributes.hp.value": 1 });
+      return previous;
+    });
+
+    await expect(page.locator(".phonedry-hp__value")).toContainText("1/");
+    await expect(page.locator(".phonedry-hp")).toHaveClass(/phonedry-hp--down|phonedry-hp--bloodied/);
+
+    await page.evaluate(hp => {
+      const actor = game.modules.get("phonedry").api.shell.actor;
+      return actor.update({ "system.attributes.hp.value": hp });
+    }, restore);
+
     await context.close();
   });
+
 
   test("initiative rolls without opening a Foundry dialog", async ({ browser }) => {
     const context = await browser.newContext(TOUCH);
@@ -304,8 +340,10 @@ test.describe("stats screen", () => {
     await joinGame(page);
     await reloadAt(page, PHONE_VIEWPORT);
 
-    // Nothing has been rolled yet, so the log takes no height at all.
-    await expect(page.locator(".phonedry-log")).toBeHidden();
+    // The bar is present before anything is rolled — it is the way in to the
+    // formula field — but it has no roll to show yet.
+    await expect(page.locator(".phonedry-log")).toBeVisible();
+    await expect(page.locator(".phonedry-log__total")).toHaveCount(0);
 
     await page.locator('[data-roll="skill"][data-roll-key="ath"]').click();
 
@@ -343,6 +381,71 @@ test.describe("stats screen", () => {
     await context.close();
   });
 
+  test("a formula can be typed and rolled, like Foundry's /r", async ({ browser }) => {
+    const context = await browser.newContext(TOUCH);
+    const page = await context.newPage();
+    const errors = collectErrors(page);
+
+    await joinGame(page);
+    await reloadAt(page, PHONE_VIEWPORT);
+    await page.locator("[data-action='toggleRollLog']").click();
+
+    const input = page.locator(".phonedry-log__formula-input");
+    await input.fill("2d6 + 3");
+    await page.locator("[data-action='rollTyped']").click();
+
+    await expect.poll(
+      () => page.evaluate(() => [...game.messages].at(-1)?.rolls?.[0]?.formula ?? null)
+    ).toBe("2d6 + 3");
+
+    // Attributed to the character, which is also what puts it in this sheet's
+    // log rather than only in a chat nobody on a phone can see.
+    const speaker = await page.evaluate(() => ({
+      messageActor: [...game.messages].at(-1).speaker.actor,
+      sheetActor: game.modules.get("phonedry").api.shell.actor.id
+    }));
+    expect(speaker.messageActor).toBe(speaker.sheetActor);
+    await expect(page.locator(".phonedry-log__entry").first()).toContainText("2d6 + 3");
+
+    // Kept, not cleared: a damage formula gets rolled every round, and
+    // retyping it on a phone keyboard each time would be the whole cost of the
+    // feature.
+    await expect(input).toHaveValue("2d6 + 3");
+
+    // Enter rolls too — the return key is already under the thumb after typing.
+    const before = await page.evaluate(() => game.messages.size);
+    await input.press("Enter");
+    await expect.poll(() => page.evaluate(() => game.messages.size)).toBe(before + 1);
+
+    // An actor reference resolves against the character rather than erroring.
+    await input.fill("1d20 + @abilities.wis.mod");
+    await page.locator("[data-action='rollTyped']").click();
+    await expect.poll(
+      () => page.evaluate(() => [...game.messages].at(-1)?.rolls?.[0]?.formula ?? null)
+    ).toBe("1d20 + 4");
+
+    expect(errors).toEqual([]);
+
+    /* --- and one that cannot be rolled --- */
+
+    // The log is still open from above.
+    const beforeInvalid = await page.evaluate(() => game.messages.size);
+    await page.locator(".phonedry-log__formula-input").fill("not a formula");
+    await page.locator("[data-action='rollTyped']").click();
+
+    // Foundry's own error here is "Unresolved StringTerm not requested for
+    // evaluation", which tells a player nothing at all.
+    await expect.poll(
+      () => page.evaluate(() => [...document.querySelectorAll("#notifications li")]
+        .map(n => n.innerText).join(" "))
+    ).toContain("2d6 + 3");
+
+    expect(await page.evaluate(() => game.messages.size)).toBe(beforeInvalid);
+
+    await context.close();
+  });
+
+
   test("a phone on its side asks to be turned back", async ({ browser }) => {
     const context = await browser.newContext(TOUCH);
     const page = await context.newPage();
@@ -368,73 +471,5 @@ test.describe("stats screen", () => {
     await context.close();
   });
 
-  test("nothing on the sheet is selectable text", async ({ browser }) => {
-    // iOS turns a slow tap on a label into a text selection and a Copy /
-    // Look Up callout over the sheet. This is the rule that prevents it, and
-    // it cannot be verified anywhere but on the device — so the least this can
-    // do is fail loudly if the rule is ever dropped.
-    const context = await browser.newContext(TOUCH);
-    const page = await context.newPage();
 
-    await joinGame(page);
-    await reloadAt(page, PHONE_VIEWPORT);
-
-    // Both spellings are checked because WebKit needs the prefixed one and does
-    // not implement the standard property at all — `CSS.supports("user-select",
-    // "none")` is false there. That is exactly why the stylesheet declares
-    // both, and reading only the unprefixed name reports every row as
-    // selectable on the one engine that matters most here.
-    const selectable = await page.locator(".phonedry-skill__name").evaluateAll(
-      els => els.filter(el => {
-        const style = getComputedStyle(el);
-        return (style.webkitUserSelect ?? style.userSelect) !== "none";
-      }).length
-    );
-    expect(selectable).toBe(0);
-
-    // The property is a proxy for the behaviour; this is the behaviour. If a
-    // future engine drops the prefix, the check above could pass while text
-    // stayed selectable.
-    const selected = await page.evaluate(() => {
-      const el = document.querySelector(".phonedry-skill__name");
-      const range = document.createRange();
-      range.selectNodeContents(el);
-      const selection = getSelection();
-      selection.removeAllRanges();
-      selection.addRange(range);
-      const text = selection.toString();
-      selection.removeAllRanges();
-      return text;
-    });
-    expect(selected, "skill labels can still be selected as text").toBe("");
-
-    await context.close();
-  });
-
-  test("a hit point change updates the header without a reload", async ({ browser }) => {
-    const context = await browser.newContext(TOUCH);
-    const page = await context.newPage();
-
-    await joinGame(page);
-    await reloadAt(page, PHONE_VIEWPORT);
-
-    // Damage applied by the GM is the normal case, and a sheet that needed a
-    // manual refresh to notice would be useless in a fight.
-    const restore = await page.evaluate(async () => {
-      const actor = game.modules.get("phonedry").api.shell.actor;
-      const previous = actor.system.attributes.hp.value;
-      await actor.update({ "system.attributes.hp.value": 1 });
-      return previous;
-    });
-
-    await expect(page.locator(".phonedry-hp__value")).toContainText("1/");
-    await expect(page.locator(".phonedry-hp")).toHaveClass(/phonedry-hp--down|phonedry-hp--bloodied/);
-
-    await page.evaluate(hp => {
-      const actor = game.modules.get("phonedry").api.shell.actor;
-      return actor.update({ "system.attributes.hp.value": hp });
-    }, restore);
-
-    await context.close();
-  });
 });

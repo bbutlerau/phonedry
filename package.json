@@ -6,8 +6,10 @@
   "scripts": {
     "test": "npm run test:unit && npm run test:e2e",
     "test:unit": "node --test \"test/unit/**/*.test.mjs\"",
-    "test:e2e": "playwright test",
-    "test:headed": "playwright test --headed"
+    "test:e2e": "playwright test --project=chromium",
+    "test:webkit": "playwright test --project=webkit",
+    "test:all": "npm run test:unit && playwright test",
+    "test:headed": "playwright test --project=chromium --headed"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0"

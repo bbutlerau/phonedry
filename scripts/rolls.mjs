@@ -182,6 +182,58 @@ export function rollInitiative(actor, mode = ROLL_MODE.NORMAL) {
 /* -------------------------------------------- */
 
 /**
+ * Turn what someone typed into a chat command.
+ *
+ * A bare formula is the common case — "2d6 + 3" — and Foundry would treat that
+ * as ordinary chat and post it as text, so it gets `/r` put in front of it.
+ * Anything already starting with a slash is passed through untouched, which is
+ * what makes `/gmroll`, `/blindroll` and `/selfroll` work here without this
+ * module knowing they exist.
+ *
+ * @param {string} raw
+ * @returns {string|null} Null if there was nothing to roll.
+ */
+export function toChatCommand(raw) {
+  const text = (raw ?? "").trim();
+  if ( !text ) return null;
+  return text.startsWith("/") ? text : `/r ${text}`;
+}
+
+/**
+ * Roll something the player typed.
+ *
+ * Handed to Foundry's own chat command processing rather than parsed here.
+ * That is not laziness about a regular expression: `processMessage` is what
+ * fires the `chatMessage` hook, resolves `@` references against the actor's
+ * roll data, applies the roll mode of whichever command was used, and is what
+ * every dice module in the ecosystem expects to be involved. A formula parsed
+ * by us would work until it met any of that.
+ *
+ * The speaker is set explicitly so a custom roll is attributed to the
+ * character, which is also what puts it in this sheet's roll log.
+ *
+ * @param {Actor} actor
+ * @param {string} raw  What was typed.
+ * @returns {Promise<ChatMessage|null>}
+ */
+export async function rollTypedCommand(actor, raw) {
+  const command = toChatCommand(raw);
+  if ( !command ) return null;
+
+  try {
+    const speaker = ChatMessage.implementation.getSpeaker({ actor });
+    return await ui.chat.processMessage(command, { speaker });
+  } catch ( error ) {
+    // Foundry's own message for a bad formula is "Unresolved StringTerm not
+    // requested for evaluation", which tells a player nothing. Ours says what
+    // to do about it and keeps theirs for anyone who looks at the console.
+    console.error("phonedry | custom roll failed", error);
+    ui.notifications?.warn(game.i18n.localize("PHONEDRY.Rolls.BadFormula"));
+    return null;
+  }
+}
+
+/**
  * Whether a mode is one the player should be reminded about.
  *
  * The advantage selector is sticky — it stays where it was put until it is

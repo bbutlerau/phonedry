@@ -12,6 +12,7 @@ import assert from "node:assert/strict";
 import {
   describeRoll, isOwnRoll, pushRoll, ROLL_LOG_LIMIT, MAX_SHOWN_DICE
 } from "../../scripts/data/roll-log.mjs";
+import { toChatCommand } from "../../scripts/rolls.mjs";
 
 const USER = "user-1";
 const ACTOR = "actor-1";
@@ -196,5 +197,34 @@ describe("pushRoll", () => {
   it("ignores a null entry", () => {
     const log = [{ id: "a" }];
     assert.equal(pushRoll(log, null), log);
+  });
+});
+
+/* -------------------------------------------- */
+
+describe("toChatCommand", () => {
+  it("turns a bare formula into a roll command", () => {
+    // Without the prefix Foundry treats it as ordinary chat and posts the text
+    // rather than rolling it.
+    assert.equal(toChatCommand("2d6 + 3"), "/r 2d6 + 3");
+  });
+
+  it("passes a command through untouched", () => {
+    // This is what makes /gmroll, /blindroll and /selfroll work without this
+    // module knowing they exist.
+    assert.equal(toChatCommand("/gmroll 1d20"), "/gmroll 1d20");
+    assert.equal(toChatCommand("/r 1d20"), "/r 1d20");
+  });
+
+  it("trims what was typed", () => {
+    // A phone keyboard adds a trailing space after autocorrect readily enough.
+    assert.equal(toChatCommand("  1d20  "), "/r 1d20");
+  });
+
+  it("returns null for nothing to roll", () => {
+    assert.equal(toChatCommand(""), null);
+    assert.equal(toChatCommand("   "), null);
+    assert.equal(toChatCommand(null), null);
+    assert.equal(toChatCommand(undefined), null);
   });
 });

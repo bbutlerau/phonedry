@@ -1,7 +1,6 @@
 {
   "PHONEDRY": {
     "Title": "Phonedry",
-
     "Settings": {
       "Mode": {
         "Name": "Mobile client",
@@ -11,7 +10,6 @@
         "Never": "Never"
       }
     },
-
     "Sheet": {
       "Abilities": "Abilities",
       "ArmourClass": "AC",
@@ -31,16 +29,19 @@
       "SpellSave": "Spell DC",
       "Successes": "Successes"
     },
-
     "Rolls": {
       "Advantage": "Advantage",
+      "BadFormula": "That formula could not be rolled. Try something like 2d6 + 3.",
       "Disadvantage": "Disadvantage",
+      "Empty": "Tap to roll dice",
+      "Failed": "Phonedry could not roll {what}. See the console for details.",
+      "FormulaLabel": "Roll a formula",
+      "FormulaPlaceholder": "2d6 + 3",
       "ModeLabel": "How to roll",
       "Normal": "Normal",
       "Recent": "Recent rolls",
-      "Failed": "Phonedry could not roll {what}. See the console for details."
+      "Roll": "Roll"
     },
-
     "HitPoints": {
       "Amount": "Amount",
       "Damage": "Damage",
@@ -51,11 +52,9 @@
       "NeedAmount": "Enter how many hit points first.",
       "Temp": "Temp"
     },
-
     "Rotate": {
       "Message": "Turn your phone upright to use the character sheet."
     },
-
     "Empty": {
       "Heading": "No character to show",
       "None": "No character is assigned to {user}, and you do not own one in this world. Ask your GM to assign you a character.",

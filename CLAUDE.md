@@ -162,16 +162,28 @@ unsure.
 Run the tests before calling a milestone done:
 
 ```bash
-npm test          # both suites; the e2e half needs the Docker Foundry running
-npm run test:unit # mappers only — no Foundry, no browser, fast
-npm run test:e2e  # smoke tests against the live instance
+npm test           # unit + Chromium smoke tests; ~2 minutes
+npm run test:unit  # mappers only — no Foundry, no browser, instant
+npm run test:webkit # the same smoke tests under WebKit
+npm run test:all   # everything, both engines; ~6 minutes
 ```
+
+WebKit is deliberately not in the default run. It roughly doubles the time, and
+a dev loop that takes six minutes stops being run. Use it before calling a
+milestone done, and any time the change is to layout, gestures, input handling
+or anything touching a Foundry dialog — those are the areas where the two
+engines have actually disagreed.
+
+Smoke tests are expensive: each one joins a world, and that is most of its
+eight seconds. Prefer adding assertions to an existing test over adding a new
+one, unless the new case genuinely needs a different viewport or a fresh
+client.
 
 The unit tests cover the actor → view model mappers, use Node's built-in test
 runner rather than a framework, and are the part that can run in CI.
 
-The smoke tests run against both Chromium and WebKit, and the second one is
-not a formality. Every browser on iOS is WebKit, so half the target devices run
+The smoke tests can run against both Chromium and WebKit, and the second is not
+a formality. Every browser on iOS is WebKit, so half the target devices run
 an engine Chromium testing says nothing about — and the two worst bugs so far,
 the long-press that iOS turned into a text selection and the Foundry dialog
 that rendered with its middle collapsed, were both invisible in Chromium and

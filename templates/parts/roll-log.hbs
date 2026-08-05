@@ -1,13 +1,14 @@
 {{!--
   The roll log: what was just rolled, and what came before it.
 
-  Sits at the bottom of the screen, which is where a thumb is. It stays out of
-  the way entirely until the first roll of the session — an empty panel taking
-  up height on a phone would be worse than nothing.
+  Sits at the bottom of the screen, which is where a thumb is. The bar is
+  always present, even before anything has been rolled: it is the only route to
+  the formula field, and hiding it until a first roll meant a player could not
+  type a roll until they had made one some other way.
 
   CONSTRAINT: exactly one top-level element. See the note in header.hbs.
 --}}
-<div class="phonedry-log" {{#unless rollLog.length}}hidden{{/unless}}>
+<div class="phonedry-log">
 
   {{!-- The history, above the bar and hidden until asked for. Newest first. --}}
   <ul class="phonedry-log__history" id="phonedry-log-history" {{#unless rollLogOpen}}hidden{{/unless}}>
@@ -31,6 +32,24 @@
   </ul>
 
   {{!--
+    Type a roll, like Foundry's /r. Shown with the history rather than always,
+    because it is occasional — damage the sheet does not know about yet, a
+    death save the GM asked for, a d100. Sits directly above the bar so it is
+    the nearest thing to the thumb once opened.
+  --}}
+  {{#if rollLogOpen}}
+    <div class="phonedry-log__formula">
+      <input type="text" class="phonedry-log__formula-input" name="formula"
+             value="{{formula}}" placeholder="{{localize 'PHONEDRY.Rolls.FormulaPlaceholder'}}"
+             autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+             aria-label="{{localize 'PHONEDRY.Rolls.FormulaLabel'}}" />
+      <button type="button" class="phonedry-log__formula-roll" data-action="rollTyped">
+        {{localize "PHONEDRY.Rolls.Roll"}}
+      </button>
+    </div>
+  {{/if}}
+
+  {{!--
     The bar: the most recent roll while collapsed, and a plain heading once the
     history is open — the list already starts with that roll, and showing it
     twice reads as a bug rather than as a summary.
@@ -40,7 +59,7 @@
           aria-controls="phonedry-log-history">
     {{#if rollLogOpen}}
       <span class="phonedry-log__flavor">{{localize "PHONEDRY.Rolls.Recent"}}</span>
-    {{else}}
+    {{else if rollLog.length}}
       {{#with rollLog.[0]}}
         <span class="phonedry-log__flavor">{{this.flavor}}</span>
         <span class="phonedry-log__dice">
@@ -56,6 +75,11 @@
                      {{#if this.critical}}phonedry-log__total--critical{{/if}}
                      {{#if this.fumble}}phonedry-log__total--fumble{{/if}}">{{this.total}}</span>
       {{/with}}
+    {{else}}
+      {{!-- Nothing rolled yet. The bar still shows, because it is the only way
+            to reach the formula field — hiding it until a first roll made
+            typing a roll impossible until you had rolled something else. --}}
+      <span class="phonedry-log__flavor">{{localize "PHONEDRY.Rolls.Empty"}}</span>
     {{/if}}
   </button>
 

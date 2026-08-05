@@ -16,7 +16,7 @@ import { resolveCharacter } from "../data/character.mjs";
 import { buildStatsView } from "../data/stats.mjs";
 import {
   ROLL_MODE, rollAbilityCheck, rollSavingThrow, rollSkill,
-  rollDeathSave, rollInitiative
+  rollDeathSave, rollInitiative, rollTypedCommand
 } from "../rolls.mjs";
 import { applyDamage, applyHealing, applyTempHP, parseAmount } from "../hp.mjs";
 import { describeRoll, isOwnRoll, pushRoll } from "../data/roll-log.mjs";
@@ -35,6 +35,7 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
     actions: {
       applyHp: PhonedryShell.#onApplyHp,
       roll: PhonedryShell.#onRoll,
+      rollTyped: PhonedryShell.#onRollTyped,
       rollInitiative: PhonedryShell.#onRollInitiative,
       setRollMode: PhonedryShell.#onSetRollMode,
       stepHp: PhonedryShell.#onStepHp,
@@ -128,6 +129,17 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   /** Whether the roll history is expanded. @type {boolean} */
   #rollLogOpen = false;
 
+  /**
+   * What is currently typed in the formula field.
+   *
+   * Mirrored here so a re-render does not wipe it — and deliberately not
+   * cleared after rolling, because the same formula usually gets rolled again:
+   * a weapon's damage comes up every round.
+   *
+   * @type {string}
+   */
+  #formula = "";
+
   /** The roll log. Exposed for the smoke tests and the console. */
   get rollLog() {
     return this.#rollLog;
@@ -163,6 +175,34 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
    * Bound once and kept as a field so it can be removed again in `_onClose`;
    * an anonymous listener here would leak for the lifetime of the page.
    */
+  /**
+   * Keep the typed formula in sync with the field.
+   *
+   * Without this, any re-render — someone else's roll landing in the log, the
+   * GM applying damage — would rebuild the field from stale state and discard
+   * what was being typed.
+   */
+  #onFormulaInput = event => {
+    if ( event.target.classList.contains("phonedry-log__formula-input") ) {
+      this.#formula = event.target.value;
+    }
+  };
+
+  /**
+   * Roll on Enter.
+   *
+   * Phone keyboards put a return key right where the thumb already is, and
+   * reaching for a separate button after typing is a wasted movement. The
+   * button stays for anyone using the keypad's arrows or a tablet keyboard.
+   */
+  #onFormulaKey = event => {
+    if ( (event.key !== "Enter") ) return;
+    if ( !event.target.classList.contains("phonedry-log__formula-input") ) return;
+
+    event.preventDefault();
+    PhonedryShell.#onRollTyped.call(this);
+  };
+
   #onViewportChange = foundry.utils.debounce(() => {
     if ( window.innerWidth === this.#lastWidth ) return;
     this.#lastWidth = window.innerWidth;
@@ -183,6 +223,7 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       rollMode: this.#rollMode,
       rollLog: this.#rollLog,
       rollLogOpen: this.#rollLogOpen,
+      formula: this.#formula,
 
       // The view model, or null. The template branches on this rather than on
       // the actor, so an actor that somehow fails to map still lands on the
@@ -206,6 +247,12 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
     this.#applyRollMode();
     this.#applyHpEditorState();
     this.#registerHooks();
+
+    // Bound to the application root rather than to the field, because the field
+    // is replaced on every log re-render while the root is not. Re-adding the
+    // same function reference is a no-op, so these do not stack up.
+    this.element.addEventListener("input", this.#onFormulaInput);
+    this.element.addEventListener("keydown", this.#onFormulaKey);
 
     // Re-registering the same function reference for the same event is a no-op
     // per the DOM spec, so these do not stack up across renders.
@@ -432,6 +479,20 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
+   * Roll whatever is typed in the formula field.
+   *
+   * The field is not cleared afterwards. A damage formula gets rolled every
+   * round, so keeping it means the next roll is one tap rather than retyping
+   * "2d6 + 3" on a phone keyboard.
+   *
+   * @this {PhonedryShell}
+   */
+  static async #onRollTyped() {
+    if ( !this.actor ) return;
+    await rollTypedCommand(this.actor, this.#formula);
+  }
+
+  /**
    * Show or hide the roll history.
    *
    * Re-rendered rather than toggled in the DOM, because the bar itself changes
@@ -450,6 +511,9 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /** @inheritdoc */
   _onClose(options) {
+    this.element.removeEventListener("input", this.#onFormulaInput);
+    this.element.removeEventListener("keydown", this.#onFormulaKey);
+
     for ( const [hook, id] of this.#hooks ) Hooks.off(hook, id);
     this.#hooks = [];
 
