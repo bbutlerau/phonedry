@@ -115,7 +115,44 @@ export function collectErrors(page) {
   const errors = [];
   page.on("pageerror", e => errors.push(`pageerror: ${e.message}`));
   page.on("console", m => {
-    if ( m.type() === "error" ) errors.push(`console: ${m.text()}`);
+    if ( m.type() !== "error" ) return;
+
+    /*
+     * A missing asset is the world's problem, not the module's.
+     *
+     * Actors routinely point at artwork that is not there — a module
+     * uninstalled, a world copied without its user files — and every screen
+     * showing a portrait would then fail a test about something else entirely.
+     * The module's answer to a missing image is the silhouette fallback, which
+     * is asserted where it belongs rather than by counting console noise here.
+     */
+    if ( m.text().startsWith("Failed to load resource") ) return;
+
+    errors.push(`console: ${m.text()}`);
   });
   return errors;
+}
+
+/**
+ * Press and hold an element.
+ *
+ * Playwright has no long-press primitive, so this drives the pointer directly.
+ * The element is scrolled into view first: raw mouse events do not scroll the
+ * way `click()` does, and pressing at coordinates below the fold silently
+ * reaches nothing at all.
+ *
+ * The finger does not move between down and up, because the gesture layer
+ * cancels a hold that drifts — which is what stops a panel appearing mid-scroll.
+ *
+ * @param {import("@playwright/test").Page} page
+ * @param {import("@playwright/test").Locator} locator
+ */
+export async function longPress(page, locator) {
+  await locator.scrollIntoViewIfNeeded();
+  const box = await locator.boundingBox();
+
+  await page.mouse.move(box.x + (box.width / 2), box.y + (box.height / 2));
+  await page.mouse.down();
+  await page.waitForTimeout(800);
+  await page.mouse.up();
 }

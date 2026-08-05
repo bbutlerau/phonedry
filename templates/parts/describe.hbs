@@ -6,21 +6,65 @@
 
   CONSTRAINT: exactly one top-level element. See the note in header.hbs.
 --}}
-<div class="phonedry-describe" {{#unless describe}}hidden{{/unless}}>
+{{!-- The dimmed area above the panel dismisses it.
+
+      The close button is at the top of a panel anchored to the bottom of the
+      screen, so on a tall phone it sits in the middle — and reaching past it to
+      tap the dimmed area is what a thumb does first. That is the standard sheet
+      gesture on both platforms, so the instinct is right and the panel should
+      honour it rather than ignore the tap. The button stays for anyone who
+      wants it, and because a backdrop tap is unmarked. --}}
+<div class="phonedry-describe" data-action="closeDescription"
+     {{#unless describe}}hidden{{/unless}}>
   {{#if describe}}
     <div class="phonedry-describe__panel" role="dialog" aria-modal="true"
          aria-label="{{describe.name}}">
       <div class="phonedry-describe__head">
-        <img class="phonedry-describe__icon" src="{{describe.img}}" alt="" />
+        {{!-- A rules page has no artwork of its own, and an <img> with an empty
+              src resolves against the page URL and draws a broken icon. --}}
+        {{#if describe.img}}
+          <img class="phonedry-describe__icon" src="{{describe.img}}" alt="" />
+        {{/if}}
         <span class="phonedry-describe__titles">
           <span class="phonedry-describe__name">{{describe.name}}</span>
           {{#if describe.subtitle}}
             <span class="phonedry-describe__subtitle">{{describe.subtitle}}</span>
           {{/if}}
         </span>
+        {{!-- One control, whose meaning follows the state.
+
+              Following a link replaces what the panel is showing, so while
+              there is something behind it this goes back rather than dismissing
+              — otherwise reading a cited rule costs you the rule you were
+              reading it from. At the root there is nothing to go back to, so it
+              closes. Two separate controls would overlap and leave a player
+              guessing which one loses their place. --}}
         <button type="button" class="phonedry-describe__close" data-action="closeDescription"
-                aria-label="{{localize 'PHONEDRY.Describe.Close'}}">&times;</button>
+                aria-label="{{#if describeBack}}{{localize 'PHONEDRY.Describe.Back'}}{{else}}{{localize 'PHONEDRY.Describe.Close'}}{{/if}}">
+          {{#if describeBack}}
+            <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+          {{else}}
+            &times;
+          {{/if}}
+        </button>
       </div>
+
+      {{!-- What it costs, how far it reaches, how long it lasts.
+
+            Above the description because these are the questions asked before
+            reading a word of it, and answering them used to mean reading all of
+            it. Every value is dnd5e's own composed string, so nothing here is
+            derived a second time. --}}
+      {{#if describe.facts}}
+        <dl class="phonedry-describe__facts">
+          {{#each describe.facts}}
+            <div class="phonedry-describe__fact">
+              <dt>{{localize this.label}}</dt>
+              <dd>{{this.value}}</dd>
+            </div>
+          {{/each}}
+        </dl>
+      {{/if}}
 
       {{!-- Enriched by Foundry before it reaches here, so inline rolls and
             references read as text rather than as markup. --}}

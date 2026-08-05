@@ -99,7 +99,15 @@ export function buildSkills(system, config) {
         abilityLabel: (config.abilities?.[ability]?.abbreviation ?? ability ?? "").toUpperCase(),
         total: formatModifier(data.total),
         passive: data.passive ?? null,
-        proficiency: proficiencyLevel(data.proficient ?? 0)
+        proficiency: proficiencyLevel(data.proficient ?? 0),
+
+        // Where dnd5e keeps the rule for this skill, as a uuid into its own
+        // reference compendium. A skill is not an item, so this is the only
+        // thing there is to read when one is held — and it is what a player
+        // actually wants at the table, which is what the skill covers rather
+        // than how the number was arrived at. Null where the reference
+        // compendium is not installed, in which case the row offers no hold.
+        reference: skill.reference ?? null
       };
     })
     .sort((a, b) => a.label.localeCompare(b.label));
@@ -118,6 +126,69 @@ export function buildSkills(system, config) {
  * @param {object} config  `CONFIG.DND5E`.
  * @returns {object}
  */
+/**
+ * The rest types offered in the header.
+ *
+ * Read from dnd5e's config rather than written out, so the labels are the
+ * system's own words in the player's own language, and so the icons match the
+ * ones they see everywhere else in Foundry.
+ *
+ * @param {object} config  `CONFIG.DND5E`.
+ * @returns {object[]}
+ */
+export function buildRests(config = {}) {
+  return ["short", "long"].map(id => {
+    const rest = config.restTypes?.[id] ?? {};
+    return {
+      id,
+
+      // dnd5e's full wording — "Short Rest" — for the accessible name, where
+      // there is no width to fight over.
+      label: rest.label ?? id,
+
+      // One word for the button face. Only the first word distinguishes the
+      // two, and the second would force the button wider than hit points can
+      // spare. Ours rather than a split of dnd5e's, because taking the first
+      // word of a translated string is not a safe thing to do.
+      short: `PHONEDRY.Rest.${id === "long" ? "Long" : "Short"}`,
+
+      icon: rest.icon ?? "fa-solid fa-bed"
+    };
+  });
+}
+
+/* -------------------------------------------- */
+
+/**
+ * Hit dice, or null for a character with none.
+ *
+ * The pool is what a short rest spends, and until now there was no way to see
+ * it from a phone at all — so a player could not tell whether resting was worth
+ * anything. Spending them stays dnd5e's job: its rest dialog handles which die
+ * to roll and how much it heals, and that is rules logic we have no business
+ * reimplementing.
+ *
+ * @param {object} attributes  The actor's `system.attributes`.
+ * @returns {object|null}
+ */
+export function buildHitDice(attributes = {}) {
+  const hd = attributes.hd ?? {};
+  if ( !(hd.max > 0) ) return null;
+
+  return {
+    value: hd.value ?? 0,
+    max: hd.max,
+
+    // dnd5e works this out across a multiclassed character's several pools,
+    // which is exactly the sum nobody wants to do at the table.
+    largest: hd.largestAvailable ?? null,
+
+    spent: (hd.value ?? 0) <= 0
+  };
+}
+
+/* -------------------------------------------- */
+
 export function buildHeader(actor, config) {
   const system = actor.system ?? {};
   const attributes = system.attributes ?? {};
@@ -162,6 +233,13 @@ export function buildHeader(actor, config) {
     // leave the slot out entirely for a fighter instead of showing "DC 0".
     spellDc: attributes.spell?.dc ?? null,
     spellAbility: attributes.spell?.abilityLabel ?? null,
+
+    // What a short rest spends. Null for anything with no pool, so the
+    // template leaves the readout out rather than showing "0/0".
+    hitDice: buildHitDice(attributes),
+
+    // Short and long, in dnd5e's own words.
+    rests: buildRests(config),
 
     exhaustion: attributes.exhaustion || 0,
     inspiration: !!attributes.inspiration,

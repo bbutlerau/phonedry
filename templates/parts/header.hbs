@@ -31,25 +31,50 @@
       </button>
     </div>
 
-    {{!-- Hit points get the full width and a bar: it is the only number here
-          that changes every round, and the one people read at a glance.
+    {{!-- Hit points and resting share a row.
 
-          The whole bar is the button that opens the editor. Tapping the number
-          you want to change is the obvious gesture, and it gives the largest
-          target on the sheet to the thing reached for most often mid-fight.
-          Spans throughout, because a <button> may not contain a <div>. --}}
-    <button type="button"
-            class="phonedry-hp {{#if stats.header.hp.unconscious}}phonedry-hp--down{{else if stats.header.hp.bloodied}}phonedry-hp--bloodied{{/if}}"
-            data-action="toggleHpEditor" aria-expanded="false" aria-controls="phonedry-hp-editor">
-      <span class="phonedry-hp__bar" style="--phonedry-hp-pct: {{stats.header.hp.pct}}%"></span>
-      <span class="phonedry-hp__text">
-        <span class="phonedry-hp__label">{{localize "PHONEDRY.Sheet.HitPoints"}}</span>
-        <span class="phonedry-hp__value">
-          {{stats.header.hp.value}}<span class="phonedry-hp__sep">/</span>{{stats.header.hp.max}}
-          {{#if stats.header.hp.temp}}<span class="phonedry-hp__temp">+{{stats.header.hp.temp}}</span>{{/if}}
+          Hit points keep the larger share: it is the only number here that
+          changes every round, and the whole bar is the button that opens the
+          editor, so it should stay the biggest target on the sheet. Resting
+          sits beside it because that is what you reach for when the bar is low,
+          and because both belong to the same question — how much have I got
+          left, and how do I get it back.
+
+          Spans throughout the bar, because a <button> may not contain a
+          <div>. --}}
+    <div class="phonedry-vitality">
+      <button type="button"
+              class="phonedry-hp {{#if stats.header.hp.unconscious}}phonedry-hp--down{{else if stats.header.hp.bloodied}}phonedry-hp--bloodied{{/if}}"
+              data-action="toggleHpEditor" aria-expanded="false" aria-controls="phonedry-hp-editor">
+        <span class="phonedry-hp__bar" style="--phonedry-hp-pct: {{stats.header.hp.pct}}%"></span>
+        <span class="phonedry-hp__text">
+          <span class="phonedry-hp__label">{{localize "PHONEDRY.Sheet.HitPoints"}}</span>
+          <span class="phonedry-hp__value">
+            {{stats.header.hp.value}}<span class="phonedry-hp__sep">/</span>{{stats.header.hp.max}}
+            {{#if stats.header.hp.temp}}<span class="phonedry-hp__temp">+{{stats.header.hp.temp}}</span>{{/if}}
+          </span>
         </span>
-      </span>
-    </button>
+      </button>
+
+      {{!-- Icon and word both, because an icon alone is a guess and these two
+            are not interchangeable — taking the wrong one wastes an hour of
+            game time or a night of it.
+
+            One word rather than dnd5e's "Short Rest" / "Long Rest": only the
+            first word distinguishes them, and the second would force the
+            button wider than hit points can spare. dnd5e's full label goes on
+            the accessible name, where there is no width to fight over. --}}
+      <div class="phonedry-rests" role="group" aria-label="{{localize 'PHONEDRY.Rest.Label'}}">
+        {{#each stats.header.rests}}
+          <button type="button" class="phonedry-rest phonedry-rest--{{this.id}}"
+                  data-action="rest" data-rest="{{this.id}}"
+                  aria-label="{{this.label}}">
+            <i class="{{this.icon}}" aria-hidden="true"></i>
+            <span class="phonedry-rest__label">{{localize this.short}}</span>
+          </button>
+        {{/each}}
+      </div>
+    </div>
 
     {{!-- Hidden until the bar is tapped. The `hidden` attribute rather than a
           class, so it is inert to assistive technology as well as invisible. --}}
@@ -107,6 +132,20 @@
         <span class="phonedry-vitals__term">{{localize "PHONEDRY.Sheet.Proficiency"}}</span>
         <span class="phonedry-vitals__value">{{stats.header.proficiency}}</span>
       </div>
+
+      {{!-- What a short rest has to spend. A readout rather than a control:
+            dnd5e's rest dialog is where hit dice are actually rolled, and it
+            knows which die and how much it heals across a multiclassed
+            character. Shown here so the player can tell before resting whether
+            resting is worth anything. --}}
+      {{#if stats.header.hitDice}}
+        <div class="phonedry-vitals__item {{#if stats.header.hitDice.spent}}phonedry-vitals__item--warning{{/if}}">
+          <span class="phonedry-vitals__term">{{localize "PHONEDRY.Sheet.HitDice"}}</span>
+          <span class="phonedry-vitals__value">
+            {{stats.header.hitDice.value}}<span class="phonedry-vitals__unit">/{{stats.header.hitDice.max}}</span>
+          </span>
+        </div>
+      {{/if}}
 
       {{#if stats.header.spellDc}}
         <div class="phonedry-vitals__item">

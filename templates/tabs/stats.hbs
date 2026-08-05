@@ -70,8 +70,14 @@
     <ul class="phonedry-skills">
       {{#each stats.skills}}
         <li>
+          {{!-- Holding a skill shows the rule it covers. The attribute is
+                omitted rather than left empty where there is no reference to
+                point at: an empty one still matches the gesture's selector, and
+                a hold that resolves to nothing would swallow the tap that
+                follows it and stop the skill rolling. --}}
           <button type="button" class="phonedry-skill" data-action="roll" data-roll="skill"
-                  data-roll-key="{{this.key}}">
+                  data-roll-key="{{this.key}}"
+                  {{#if this.reference}}data-describe-uuid="{{this.reference}}"{{/if}}>
             <span class="phonedry-pip phonedry-prof--{{this.proficiency}}"></span>
             <span class="phonedry-skill__name">{{this.label}}</span>
             <span class="phonedry-skill__ability">{{this.abilityLabel}}</span>
@@ -81,6 +87,9 @@
         </li>
       {{/each}}
     </ul>
+
+    {{!-- Said in words because a hold is invisible until someone tries it. --}}
+    <p class="phonedry-section__note">{{localize "PHONEDRY.Describe.HintSkills"}}</p>
   </section>
 
 {{else}}

@@ -1,0 +1,90 @@
+{{!--
+  The actions screen: everything the character can do on their turn that is not
+  a spell, grouped by what it costs.
+
+  A row is an activity rather than an item. Channel Divinity is one item with
+  three activities sharing one pool of uses, and giving each its own row is what
+  lets a tap do the thing instead of opening a dialog to ask which one was
+  meant.
+
+  A tab body, included by content.hbs. No wrapper and no single-root
+  constraint; those belong to the part.
+--}}
+{{#if actions.empty}}
+
+  <section class="phonedry-empty">
+    <h2>{{localize "PHONEDRY.Actions.NoneHeading"}}</h2>
+    <p>{{localize "PHONEDRY.Actions.NoneBody"}}</p>
+  </section>
+
+{{else}}
+
+  {{#each actions.groups}}
+    <section class="phonedry-section">
+      <h2 class="phonedry-section__heading">{{localize this.label}}</h2>
+
+      <ul class="phonedry-actions">
+        {{#each this.entries}}
+          {{!-- The kind of thing this is, as a coloured stripe down the left
+                edge — the same device the spells screen uses for where a spell
+                came from. A weapon, a class feature and a consumable behave
+                differently enough that telling them apart at a glance is worth
+                a column of colour. --}}
+          <li class="phonedry-action phonedry-kind--{{this.itemType}} {{#if this.spent}}phonedry-action--spent{{/if}}">
+
+            {{!-- The whole row is the button. There is no second control here
+                  the way a spell has a preparation toggle, so nothing competes
+                  for the tap and the target can be the full width. --}}
+            <button type="button" class="phonedry-action__use"
+                    data-action="useActivity"
+                    data-item-id="{{this.itemId}}" data-activity-id="{{this.activityId}}"
+                    data-describe="{{this.itemId}}">
+
+              <img class="phonedry-action__icon" src="{{this.img}}" alt="" />
+
+              <span class="phonedry-action__body">
+                <span class="phonedry-action__name">{{this.name}}</span>
+                <span class="phonedry-action__meta">
+                  {{!-- The subtitle is only set when it says something the name
+                        does not — "Channel Divinity" under "Turn Undead". --}}
+                  {{!-- The stripe says there is a distinction; this says which.
+                        A colour on its own is a code the player has to learn. --}}
+                  {{#if this.typeLabel}}<span class="phonedry-action__type">{{localize this.typeLabel}}</span> · {{/if}}
+                  {{#if this.subtitle}}{{this.subtitle}} · {{/if}}
+                  {{#if this.range}}{{this.range}}{{/if}}
+                  {{!-- The heading already names the activation for every group
+                        but the last, which has no single one to name. --}}
+                  {{#if ../other}} · {{this.activation}}{{/if}}
+                </span>
+              </span>
+
+              {{!-- To hit and damage on the right, where the eye goes for a
+                    number, and in tabular figures so a column of them lines
+                    up. --}}
+              <span class="phonedry-action__numbers">
+                {{#if this.toHit}}<span class="phonedry-action__tohit">{{this.toHit}}</span>{{/if}}
+                {{#if this.damage}}<span class="phonedry-action__damage">{{this.damage}}</span>{{/if}}
+                {{#if this.uses}}
+                  {{!-- Charges are summed across merged stacks, so this says how
+                        many throws are left rather than how the pack is
+                        organised. --}}
+                  <span class="phonedry-action__uses">{{this.uses.value}}<span class="phonedry-action__uses-max">/{{this.uses.max}}</span></span>
+                {{else if this.merged}}
+                  {{!-- Nothing tracks charges here, so the count is the only
+                        thing left saying there is more than one. --}}
+                  <span class="phonedry-action__uses">&times;{{this.stacks}}</span>
+                {{/if}}
+              </span>
+
+            </button>
+
+          </li>
+        {{/each}}
+      </ul>
+    </section>
+  {{/each}}
+
+  {{!-- Said in words because a hold is invisible until someone tries it. --}}
+  <p class="phonedry-section__note">{{localize "PHONEDRY.Describe.HintActions"}}</p>
+
+{{/if}}

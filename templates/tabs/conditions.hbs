@@ -1,0 +1,93 @@
+{{!--
+  Conditions, and whatever is currently applied to the character.
+
+  Two sections, kept firmly apart. The first is a set of switches the player
+  owns: you are prone because you dropped prone. The second is a record of
+  things that arrived from elsewhere — a Bless someone cast, a Rage a feature
+  turned on — which a player mostly needs to see rather than to set.
+
+  Presenting them as one list of toggles would invite a player to switch off a
+  spell someone else is concentrating on and assume that ended it.
+
+  A tab body, included by content.hbs. No wrapper and no single-root
+  constraint; those belong to the part.
+--}}
+<section class="phonedry-section">
+  <h2 class="phonedry-section__heading">{{localize "PHONEDRY.Conditions.Heading"}}</h2>
+
+  {{!-- A grid of chips rather than a list of rows. There are eighteen of these
+        and they are set and cleared constantly, so what matters is fitting as
+        many as possible on screen at once with targets a thumb can still
+        hit — not a tidy column. --}}
+  <ul class="phonedry-conditions">
+    {{#each conditions.conditions}}
+      <li>
+        {{#if this.levels}}
+          {{!-- Exhaustion is a level, not a switch. Tapping steps it up and
+                wraps back to zero at the top, so one control does the whole
+                range without a second button competing for space. The count is
+                shown so the state is readable without counting pips. --}}
+          <button type="button"
+                  class="phonedry-condition {{#if this.active}}phonedry-condition--on{{/if}}"
+                  data-action="stepExhaustion" data-levels="{{this.levels}}"
+                  {{#if this.reference}}data-describe-uuid="{{this.reference}}"{{/if}}
+                  aria-label="{{localize 'PHONEDRY.Conditions.ExhaustionAria' level=this.level max=this.levels}}">
+            <img class="phonedry-condition__icon" src="{{this.img}}" alt="" />
+            <span class="phonedry-condition__name">{{this.name}}</span>
+            <span class="phonedry-condition__level">{{this.level}}<span class="phonedry-condition__max">/{{this.levels}}</span></span>
+          </button>
+        {{else}}
+          <button type="button"
+                  class="phonedry-condition {{#if this.active}}phonedry-condition--on{{/if}}"
+                  data-action="toggleCondition" data-condition="{{this.id}}"
+                  {{#if this.reference}}data-describe-uuid="{{this.reference}}"{{/if}}
+                  aria-pressed="{{#if this.active}}true{{else}}false{{/if}}">
+            <img class="phonedry-condition__icon" src="{{this.img}}" alt="" />
+            <span class="phonedry-condition__name">{{this.name}}</span>
+          </button>
+        {{/if}}
+      </li>
+    {{/each}}
+  </ul>
+
+  {{!-- Said in words because a hold is invisible until someone tries it. --}}
+  <p class="phonedry-section__note">{{localize "PHONEDRY.Describe.HintConditions"}}</p>
+</section>
+
+<section class="phonedry-section">
+  <h2 class="phonedry-section__heading">{{localize "PHONEDRY.Conditions.Applied"}}</h2>
+
+  {{#if conditions.noneApplied}}
+    <p class="phonedry-section__note">{{localize "PHONEDRY.Conditions.NoneApplied"}}</p>
+  {{else}}
+    <ul class="phonedry-effects">
+      {{#each conditions.applied}}
+        {{!-- Rows rather than chips, and a stripe rather than a fill: these are
+              not switches of the same kind as the ones above, and they should
+              not look like them. --}}
+        <li class="phonedry-effect {{#if this.disabled}}phonedry-effect--off{{/if}}{{#if this.sourceType}} phonedry-kind--{{this.sourceType}}{{/if}}">
+          <button type="button" class="phonedry-effect__toggle"
+                  data-action="toggleEffect" data-effect-uuid="{{this.uuid}}"
+                  data-disabled="{{this.disabled}}"
+                  aria-pressed="{{#unless this.disabled}}true{{else}}false{{/unless}}">
+            <img class="phonedry-effect__icon" src="{{this.img}}" alt="" />
+
+            <span class="phonedry-effect__body">
+              <span class="phonedry-effect__name">{{this.name}}</span>
+              <span class="phonedry-effect__meta">
+                {{#if this.source}}{{this.source}}{{/if}}
+                {{#if this.duration}}{{#if this.source}} · {{/if}}{{this.duration}}{{/if}}
+                {{#if this.suppressed}} · {{localize "PHONEDRY.Conditions.Suppressed"}}{{/if}}
+              </span>
+            </span>
+          </button>
+        </li>
+      {{/each}}
+    </ul>
+
+    {{!-- Turning one off stops it applying; it does not delete it, and it does
+          not end someone else's spell. Worth saying, because a player who
+          assumes otherwise will quietly play a whole fight wrong. --}}
+    <p class="phonedry-section__note">{{localize "PHONEDRY.Conditions.AppliedNote"}}</p>
+  {{/if}}
+</section>

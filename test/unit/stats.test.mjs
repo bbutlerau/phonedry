@@ -14,8 +14,8 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  buildAbilities, buildDeathSaves, buildHeader, buildSenses, buildSkills,
-  buildStatsView, formatModifier, proficiencyLevel
+  buildAbilities, buildDeathSaves, buildHeader, buildHitDice, buildRests,
+  buildSenses, buildSkills, buildStatsView, formatModifier, proficiencyLevel
 } from "../../scripts/data/stats.mjs";
 
 import { CLERIC, CONFIG_DND5E, clericWith } from "./fixtures/character.mjs";
@@ -115,6 +115,14 @@ describe("buildSkills", () => {
     assert.equal(skills.find(s => s.key === "ste").proficiency, "half");
     assert.equal(skills.find(s => s.key === "med").proficiency, "expertise");
     assert.equal(skills.find(s => s.key === "ath").proficiency, "none");
+  });
+
+  it("carries the rule reference, so a skill can be held to read it", () => {
+    // A skill is not an item, so dnd5e's reference page is the only thing there
+    // is to read. Null where the reference compendium is not installed, which
+    // is what stops the row offering a hold that resolves to nothing.
+    assert.match(skills.find(s => s.key === "ath").reference, /^Compendium\.dnd5e\./);
+    assert.equal(skills.find(s => s.key === "med").reference, null);
   });
 
   it("prefers the actor's ability over the config default", () => {
@@ -238,5 +246,57 @@ describe("buildStatsView", () => {
     assert.equal(view.abilities.length, 3);
     assert.equal(view.skills.length, 3);
     assert.equal(view.deathSaves, null);
+  });
+});
+
+/* -------------------------------------------- */
+
+describe("buildHitDice", () => {
+  it("reports the pool a short rest spends", () => {
+    const hd = buildHitDice({ hd: { value: 5, max: 7, largestAvailable: "d8" } });
+
+    assert.deepEqual(hd, { value: 5, max: 7, largest: "d8", spent: false });
+  });
+
+  it("marks an empty pool spent, so the readout can warn", () => {
+    assert.equal(buildHitDice({ hd: { value: 0, max: 7 } }).spent, true);
+  });
+
+  it("returns null for anything with no pool at all", () => {
+    // Null rather than zeroes, so the header leaves the readout out entirely
+    // instead of showing "0/0" and inviting a rest that recovers nothing.
+    assert.equal(buildHitDice({ hd: { value: 0, max: 0 } }), null);
+    assert.equal(buildHitDice({}), null);
+  });
+});
+
+/* -------------------------------------------- */
+
+describe("buildRests", () => {
+  it("takes its wording and icons from dnd5e", () => {
+    // The system's own words, in the player's own language, with the icons
+    // they see everywhere else in Foundry.
+    const rests = buildRests({
+      restTypes: {
+        short: { label: "Short Rest", icon: "fa-solid fa-utensils" },
+        long: { label: "Long Rest", icon: "fa-solid fa-campground" }
+      }
+    });
+
+    assert.deepEqual(rests.map(r => r.id), ["short", "long"]);
+    assert.deepEqual(rests.map(r => r.label), ["Short Rest", "Long Rest"]);
+    assert.deepEqual(rests.map(r => r.icon), ["fa-solid fa-utensils", "fa-solid fa-campground"]);
+
+    // One word for the button face, ours rather than a split of a translated
+    // string — taking the first word of a translation is not safe.
+    assert.deepEqual(rests.map(r => r.short), ["PHONEDRY.Rest.Short", "PHONEDRY.Rest.Long"]);
+  });
+
+  it("still offers both rests when config is missing", () => {
+    // A rest is the only way to recover anything, so losing the buttons to an
+    // absent config entry would be worse than an ugly label.
+    const rests = buildRests({});
+    assert.deepEqual(rests.map(r => r.id), ["short", "long"]);
+    assert.ok(rests.every(r => r.icon));
   });
 });

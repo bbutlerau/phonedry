@@ -74,6 +74,14 @@ The two platforms fail differently, and both need testing:
   height Foundry computes. It is scoped to this module, so it does nothing for
   the same bug on a desktop Safari — that one needs reporting upstream.
 
+  The fix has since held on every dialog tried on a real iPhone: dnd5e's
+  activity usage dialog (Turn Undead, with a consumption fieldset) and both
+  rest dialogs (nested fieldsets, a `<select>` and a checkbox). That is enough
+  variety to treat the fix as general rather than as three lucky cases, so a
+  new dialog no longer needs to be assumed broken — but it still needs looking
+  at on a device once, because Playwright's WebKit cannot see this class of
+  bug at all.
+
   This is a problem to weigh, not a rule to apply. Work through it in order:
 
   1. **Is there an API that skips the dialog?** Initiative had one — the dialog

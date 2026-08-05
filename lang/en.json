@@ -18,6 +18,7 @@
       "DeathSaves": "Death saves",
       "Exhaustion": "Exhaustion",
       "Failures": "Failures",
+      "HitDice": "Hit dice",
       "HitPoints": "Hit points",
       "Initiative": "Init",
       "Proficiency": "Prof",
@@ -52,6 +53,12 @@
       "NeedAmount": "Enter how many hit points first.",
       "Temp": "Temp"
     },
+    "Rest": {
+      "Failed": "Phonedry could not start {what}. See the console for details.",
+      "Label": "Rest",
+      "Long": "Long",
+      "Short": "Short"
+    },
     "Rotate": {
       "Message": "Turn your phone upright to use the character sheet."
     },
@@ -62,9 +69,27 @@
       "Escape": "Open the full tabletop instead"
     },
     "Tabs": {
+      "Actions": "Actions",
+      "Conditions": "Status",
       "Label": "Character sheet sections",
-      "Stats": "Stats",
-      "Spells": "Spells"
+      "Spells": "Spells",
+      "Stats": "Stats"
+    },
+    "Conditions": {
+      "Applied": "Affecting you",
+      "AppliedNote": "Turning one off stops it applying to you. It does not end the spell for whoever cast it.",
+      "Exhaustion": "the exhaustion level",
+      "ExhaustionAria": "Exhaustion, level {level} of {max}. Tap to step up.",
+      "Failed": "Phonedry could not change {what}. See the console for details.",
+      "Heading": "Conditions",
+      "NoneApplied": "Nothing is affecting you right now.",
+      "Suppressed": "not applying"
+    },
+    "Actions": {
+      "Failed": "Phonedry could not use {what}. See the console for details.",
+      "NoneBody": "Nothing here can be used on its own. Equip a weapon, or check the Spells tab.",
+      "NoneHeading": "No actions",
+      "Other": "Other"
     },
     "Spells": {
       "Add": "Add spells",
@@ -90,10 +115,33 @@
       "SortName": "Name",
       "SortSchool": "School"
     },
+    "Targets": {
+      "Allies": "Allies",
+      "Cancel": "Cancel",
+      "Cast": "Cast at {count}",
+      "CastUntargeted": "Cast without a target",
+      "Count": "{count} chosen",
+      "CountOf": "{count} of {limit}",
+      "Enemies": "Enemies",
+      "Label": "Choose targets for {name}",
+      "NoneAvailable": "Nobody to choose from. Start an encounter, or set up a party group, and they will appear here.",
+      "Other": "Others",
+      "Over": "That is more than {limit}."
+    },
     "Describe": {
+      "Back": "Back",
+      "CastingTime": "Casting time",
       "Close": "Close",
+      "Components": "Components",
+      "Duration": "Duration",
       "Hint": "Hold a spell to read what it does.",
-      "HintBrowser": "Hold a spell to read it before adding."
+      "HintActions": "Hold an action to read what it does.",
+      "HintBrowser": "Hold a spell to read it before adding.",
+      "HintConditions": "Hold a condition to read the rule.",
+      "HintSkills": "Hold a skill to read the rule.",
+      "Range": "Range",
+      "Tags": "Notes",
+      "Target": "Target"
     },
     "LogOut": "Log out"
   }

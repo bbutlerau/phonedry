@@ -15,7 +15,14 @@ import { isTabletViewport } from "../detect.mjs";
 import { resolveCharacter } from "../data/character.mjs";
 import { buildStatsView } from "../data/stats.mjs";
 import { buildSpellsView } from "../data/spells.mjs";
+import { buildActionsView } from "../data/actions.mjs";
+import { buildConditionsView } from "../data/conditions.mjs";
+import { setCondition, setEffectDisabled, setExhaustion } from "../conditions.mjs";
+import { takeRest } from "../rest.mjs";
+import { useActivity } from "../actions.mjs";
 import { castSpell, setPrepared } from "../spells.mjs";
+import { buildTargetsView, needsTargets } from "../data/targets.mjs";
+import { broadcastTargets, collectCandidates, targetDescriptors } from "../targets.mjs";
 import { addSpell, getAvailableSpells, ownedSpellIds } from "../spell-browser.mjs";
 import { searchSpells, SORTS } from "../data/spell-browser.mjs";
 import {
@@ -24,7 +31,7 @@ import {
 } from "../rolls.mjs";
 import { applyDamage, applyHealing, applyTempHP, parseAmount } from "../hp.mjs";
 import { describeRoll, isOwnRoll, pushRoll } from "../data/roll-log.mjs";
-import { describeItem, resolveDescribable } from "../describe.mjs";
+import { describeDocument, resolveDescribable } from "../describe.mjs";
 import { bindLongPress } from "./gestures.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -42,20 +49,28 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       addSpell: PhonedryShell.#onAddSpell,
       applyHp: PhonedryShell.#onApplyHp,
       castSpell: PhonedryShell.#onCastSpell,
+      rest: PhonedryShell.#onRest,
       roll: PhonedryShell.#onRoll,
       rollTyped: PhonedryShell.#onRollTyped,
       rollInitiative: PhonedryShell.#onRollInitiative,
       closeDescription: PhonedryShell.#onCloseDescription,
       logOut: PhonedryShell.#onLogOut,
       closeSpellBrowser: PhonedryShell.#onCloseSpellBrowser,
+      closeTargets: PhonedryShell.#onCloseTargets,
+      confirmTargets: PhonedryShell.#onConfirmTargets,
+      toggleTarget: PhonedryShell.#onToggleTarget,
       openSpellBrowser: PhonedryShell.#onOpenSpellBrowser,
       setRollMode: PhonedryShell.#onSetRollMode,
       setSpellSort: PhonedryShell.#onSetSpellSort,
       setTab: PhonedryShell.#onSetTab,
+      stepExhaustion: PhonedryShell.#onStepExhaustion,
+      toggleCondition: PhonedryShell.#onToggleCondition,
+      toggleEffect: PhonedryShell.#onToggleEffect,
       stepHp: PhonedryShell.#onStepHp,
       toggleHpEditor: PhonedryShell.#onToggleHpEditor,
       togglePrepared: PhonedryShell.#onTogglePrepared,
-      toggleRollLog: PhonedryShell.#onToggleRollLog
+      toggleRollLog: PhonedryShell.#onToggleRollLog,
+      useActivity: PhonedryShell.#onUseActivity
     }
   };
 
@@ -78,7 +93,18 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
     // One content part for every tab. The active tab's body is included as a
     // dynamic partial, so only the visible section is built — rendering a full
     // spell list behind the skills screen would cost a phone real time.
-    content: { template: `modules/${MODULE_ID}/templates/parts/content.hbs` },
+    //
+    // `scrollable` is core's own scroll preservation, and it is load-bearing
+    // rather than a nicety. Preparing a spell updates the item, which re-renders
+    // the sheet; without this the list jumps back to the top, so a player
+    // preparing several spells is thrown to the top of the list after each one
+    // — and the further down the list they are working, the worse it gets.
+    // The empty selector means the part's own root element, which is the
+    // scrolling container here.
+    content: {
+      template: `modules/${MODULE_ID}/templates/parts/content.hbs`,
+      scrollable: [""]
+    },
 
     // Below the content, because it sits at the bottom of the screen where a
     // thumb is. Its own part so a roll can refresh it without rebuilding the
@@ -89,7 +115,15 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
     tabs: { template: `modules/${MODULE_ID}/templates/parts/tabs.hbs` },
 
     // A full-screen overlay, hidden until asked for.
-    browser: { template: `modules/${MODULE_ID}/templates/parts/spell-browser.hbs` },
+    // Same again for the results list, which re-renders on every keystroke and
+    // whenever a spell is added from it.
+    browser: {
+      template: `modules/${MODULE_ID}/templates/parts/spell-browser.hbs`,
+      scrollable: [".phonedry-browser__results"]
+    },
+
+    // Who a spell is aimed at, opened by casting one that wants targets.
+    targets: { template: `modules/${MODULE_ID}/templates/parts/targets.hbs` },
 
     // What something is, opened by holding it.
     describe: { template: `modules/${MODULE_ID}/templates/parts/describe.hbs` },
@@ -192,6 +226,30 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   #describe = null;
 
+  /**
+   * Panels behind the current one, oldest first.
+   *
+   * A description is full of links to other rules — Radiance of the Dawn cites
+   * Darkness, which cites its own references — and following one has to be
+   * reversible or the player loses the thing they were reading. Kept as a stack
+   * rather than a single previous entry, because those chains run several deep.
+   *
+   * @type {object[]}
+   */
+  #describeStack = [];
+
+  /**
+   * The spell waiting on a target choice, or null when the picker is closed.
+   * @type {Item|null}
+   */
+  #targeting = null;
+
+  /** Who is available to aim at, captured when the picker opened. @type {object[]} */
+  #candidates = [];
+
+  /** Chosen target ids. @type {Set<string>} */
+  #selectedTargets = new Set();
+
   /** Removes the long-press listeners bound at the last render. @type {Function|null} */
   #unbindLongPress = null;
 
@@ -288,6 +346,7 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
     const start = field?.selectionStart;
 
     this.render({ parts: ["browser"] });
+    this.#resetScroll(".phonedry-browser__results");
 
     const refocused = this.element.querySelector(".phonedry-browser__search");
     if ( refocused && (document.activeElement !== refocused) ) {
@@ -309,6 +368,74 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
 
     event.preventDefault();
     PhonedryShell.#onRollTyped.call(this);
+  };
+
+  /**
+   * Keep enriched links inside the sheet.
+   *
+   * A description is full of them — Radiance of the Dawn cites Darkness, a
+   * condition cites another condition — and Foundry's own handler answers a
+   * click by opening that document's sheet. On a phone that is a trap: the
+   * sheet is a desktop application sized for a desktop, it opens over
+   * everything, and its close button lands off the edge of the screen. With the
+   * sidebar suppressed there is then no way back at all short of reloading.
+   *
+   * So the click is taken before it reaches Foundry and answered in the panel
+   * that is already open. The panel can render both kinds of target already: a
+   * rules page keeps its text in `text.content`, an item in
+   * `system.description.value`.
+   */
+  #onContentLink = event => {
+    const link = event.target.closest("a.content-link[data-uuid]");
+    if ( !link || !this.element.contains(link) ) return;
+
+    // Both are needed. `preventDefault` stops the navigation; stopping
+    // propagation is what keeps the event from reaching the document-level
+    // handler Foundry installs, which is what opens the sheet.
+    event.preventDefault();
+    event.stopPropagation();
+
+    this.#showDescription(link.dataset.uuid, { push: true });
+  };
+
+  /**
+   * Show a document in the description panel.
+   *
+   * @param {string} uuid
+   * @param {object} [options]
+   * @param {boolean} [options.push]  Keep the current panel to come back to.
+   */
+  async #showDescription(uuid, { push = false } = {}) {
+    const doc = await fromUuid(uuid);
+    if ( !doc ) return;
+
+    const described = await describeDocument(doc);
+    if ( !described ) return;
+
+    if ( push && this.#describe ) this.#describeStack.push(this.#describe);
+    this.#describe = described;
+    this.render({ parts: ["describe"] });
+  }
+
+  /**
+   * Replace artwork that fails to load.
+   *
+   * Missing art is ordinary rather than exceptional: a module gets uninstalled,
+   * a world is copied without its user files, an asset is renamed. The result
+   * is a browser's broken-image glyph, which on a row of portraits reads as the
+   * sheet being broken rather than as one picture being absent.
+   *
+   * Delegated from the root in the capture phase, because `error` does not
+   * bubble — and delegated at all so this covers every image on the sheet
+   * rather than the one screen that happened to prompt it. The flag stops a
+   * fallback that is itself missing from looping.
+   */
+  #onImageError = event => {
+    const img = event.target;
+    if ( !(img instanceof HTMLImageElement) || img.dataset.fallback ) return;
+
+    img.dataset.fallback = "true";
+    img.src = "icons/svg/mystery-man.svg";
   };
 
   #onViewportChange = foundry.utils.debounce(() => {
@@ -341,8 +468,22 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       // empty state instead of throwing inside Handlebars.
       stats: actor ? buildStatsView(actor, CONFIG.DND5E) : null,
       spells: actor ? buildSpellsView(actor, CONFIG.DND5E) : null,
+      // Item type names come from core rather than dnd5e, and are localised
+      // keys, so they are handed in rather than looked up inside the mapper —
+      // which must stay free of Foundry globals to be unit-testable.
+      actions: actor ? buildActionsView(actor, CONFIG.DND5E, CONFIG.Item.typeLabels) : null,
+
+      // `allApplicableEffects` is dnd5e's own reckoning of what is currently
+      // applying, and it reaches effects living on the character's items as
+      // well as on the character — which is where a Rage or a Divine Order
+      // actually lives. Collecting the generator here keeps the mapper pure.
+      conditions: actor
+        ? buildConditionsView(actor, [...actor.allApplicableEffects()], CONFIG.DND5E)
+        : null,
       browser: this.#prepareBrowser(actor),
       describe: this.#describe,
+      targets: this.#prepareTargets(),
+      describeBack: this.#describeStack.length > 0,
 
       empty: actor ? null : {
         reason,
@@ -350,6 +491,25 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
         candidates: candidates.map(a => ({ id: a.id, name: a.name }))
       }
     });
+  }
+
+  /**
+   * The target picker's context.
+   *
+   * @returns {object}
+   */
+  #prepareTargets() {
+    if ( !this.#targeting ) return { open: false, groups: [], count: 0 };
+
+    return {
+      open: true,
+      ...buildTargetsView({
+        activity: this.#targeting.system?.activities?.contents?.[0],
+        name: this.#targeting.name,
+        candidates: this.#candidates,
+        selected: this.#selectedTargets
+      })
+    };
   }
 
   /**
@@ -400,6 +560,8 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
     // same function reference is a no-op, so these do not stack up.
     this.element.addEventListener("input", this.#onFormulaInput);
     this.element.addEventListener("keydown", this.#onFormulaKey);
+    this.element.addEventListener("click", this.#onContentLink);
+    this.element.addEventListener("error", this.#onImageError, true);
 
     // Re-registering the same function reference for the same event is a no-op
     // per the DOM spec, so these do not stack up across renders.
@@ -454,12 +616,34 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
     this.#unbindLongPress?.();
     const selector = "[data-describe], [data-describe-uuid]";
     this.#unbindLongPress = bindLongPress(this.element, selector, async target => {
-      const item = await resolveDescribable(target.dataset, this.#actor);
-      if ( !item ) return;
+      const doc = await resolveDescribable(target.dataset, this.#actor);
+      if ( !doc ) return;
 
-      this.#describe = await describeItem(item);
+      this.#describe = await describeDocument(doc);
+
+      // A hold starts a new trail rather than extending whatever was open
+      // before it.
+      this.#describeStack = [];
+
       this.render({ parts: ["describe"] });
     });
+  }
+
+  /**
+   * Send a scrolling container back to the top.
+   *
+   * The counterpart to the `scrollable` declarations on the parts. Preserving
+   * scroll is right when the same list is being rebuilt underneath the player —
+   * preparing a spell, adding one — and wrong when the content changes identity,
+   * because a position measured against the old list means nothing against the
+   * new one. Switching tab and running a new search are both the second case,
+   * and land the player halfway down a list they have not seen the top of.
+   *
+   * @param {string} selector
+   */
+  #resetScroll(selector) {
+    const el = this.element.querySelector(selector);
+    if ( el ) el.scrollTop = 0;
   }
 
   /**
@@ -669,7 +853,7 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
    *
    * @this {PhonedryShell}
    */
-  static #onSetTab(event, target) {
+  static async #onSetTab(event, target) {
     const tab = target.dataset.tab;
     if ( !tab || (tab === this.#tab) ) return;
 
@@ -677,7 +861,10 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
 
     // The header does not change with the tab, and rebuilding it would drop an
     // open hit point editor for no reason.
-    this.render({ parts: ["content", "tabs"] });
+    await this.render({ parts: ["content", "tabs"] });
+
+    // A different section entirely, so the preserved position is meaningless.
+    this.#resetScroll(".phonedry-content");
   }
 
   /**
@@ -687,7 +874,142 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   static #onCastSpell(event, target) {
     const spell = this.actor?.items.get(target.dataset.spellId);
-    if ( spell ) castSpell(spell);
+    if ( !spell ) return;
+
+    /*
+     * A spell aimed at creatures gets the picker first; everything else casts
+     * straight through. The check is on the activity rather than on the spell,
+     * because "does this want targets" is a property of what the spell does —
+     * and a template spell is excluded there rather than here.
+     *
+     * Candidates are captured now rather than read at render time, so the list
+     * cannot shift under the player mid-choice if a combatant is added.
+     */
+    const activity = spell.system?.activities?.contents?.[0];
+    const candidates = needsTargets(activity) ? collectCandidates(this.actor) : [];
+
+    if ( !candidates.length ) return castSpell(spell);
+
+    this.#targeting = spell;
+    this.#candidates = candidates;
+    this.#selectedTargets = new Set();
+    this.render({ parts: ["targets"] });
+  }
+
+  /**
+   * Add or remove a target.
+   *
+   * @this {PhonedryShell}
+   */
+  static #onToggleTarget(event, target) {
+    const id = target.dataset.targetId;
+    if ( this.#selectedTargets.has(id) ) this.#selectedTargets.delete(id);
+    else this.#selectedTargets.add(id);
+
+    this.render({ parts: ["targets"] });
+  }
+
+  /**
+   * Cast at whoever is selected.
+   *
+   * @this {PhonedryShell}
+   */
+  static #onConfirmTargets() {
+    const spell = this.#targeting;
+    if ( !spell ) return;
+
+    const descriptors = targetDescriptors(this.#candidates, this.#selectedTargets);
+
+    // Broadcast before casting, so a GM watching the map sees the targeting as
+    // the card arrives rather than a moment after it.
+    if ( descriptors.length ) broadcastTargets(this.#candidates, this.#selectedTargets);
+
+    this.#closeTargeting();
+    castSpell(spell, descriptors);
+  }
+
+  /**
+   * Abandon the choice without casting.
+   *
+   * @this {PhonedryShell}
+   */
+  static #onCloseTargets() {
+    this.#closeTargeting();
+  }
+
+  /** Put the picker away. */
+  #closeTargeting() {
+    this.#targeting = null;
+    this.#candidates = [];
+    this.#selectedTargets = new Set();
+    this.render({ parts: ["targets"] });
+  }
+
+  /**
+   * Take a short or long rest.
+   *
+   * dnd5e's own dialog is kept rather than suppressed, which is the opposite of
+   * the choice made for initiative — and right for the same reason it was wrong
+   * there. Initiative's dialog only collected an advantage mode the sheet
+   * already knew; this one is where hit dice are actually spent, so removing it
+   * would mean rebuilding that.
+   *
+   * @this {PhonedryShell}
+   */
+  static #onRest(event, target) {
+    if ( this.actor ) takeRest(this.actor, target.dataset.rest);
+  }
+
+  /**
+   * Turn a condition on or off.
+   *
+   * @this {PhonedryShell}
+   */
+  static #onToggleCondition(event, target) {
+    if ( !this.actor ) return;
+    setCondition(this.actor, target.dataset.condition, target.getAttribute("aria-pressed") !== "true");
+  }
+
+  /**
+   * Step exhaustion up a level, wrapping to zero past the top.
+   *
+   * One control for the whole range. A separate up and down pair would take
+   * twice the width in a grid where every chip is already at the minimum size a
+   * thumb can hit, and exhaustion is nearly always walked upwards — the way
+   * back down is a long rest, not a button.
+   *
+   * @this {PhonedryShell}
+   */
+  static #onStepExhaustion(event, target) {
+    if ( !this.actor ) return;
+
+    const max = Number(target.dataset.levels);
+    const current = this.actor.system?.attributes?.exhaustion ?? 0;
+    setExhaustion(this.actor, (current >= max) ? 0 : (current + 1), max);
+  }
+
+  /**
+   * Stop an applied effect applying, or let it apply again.
+   *
+   * @this {PhonedryShell}
+   */
+  static #onToggleEffect(event, target) {
+    setEffectDisabled(target.dataset.effectUuid, target.dataset.disabled !== "true");
+  }
+
+  /**
+   * Use an activity — an attack, a feature, a consumable.
+   *
+   * The row carries both ids because an activity is only unique within its
+   * item. Going to the activity rather than the item is what keeps this to one
+   * tap: `Item#use` on Channel Divinity would open a dialog asking which of its
+   * three activities was meant, and the row has already answered that.
+   *
+   * @this {PhonedryShell}
+   */
+  static #onUseActivity(event, target) {
+    const { itemId, activityId } = target.dataset;
+    if ( this.actor ) useActivity(this.actor, itemId, activityId);
   }
 
   /**
@@ -720,6 +1042,7 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
     this.#browserOpen = true;
     this.#browserQuery = "";
     this.render({ parts: ["browser"] });
+    this.#resetScroll(".phonedry-browser__results");
 
     // Focus after the render that builds the field, so the keyboard comes up
     // ready to type rather than after a second tap.
@@ -742,8 +1065,30 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
    *
    * @this {PhonedryShell}
    */
-  static #onCloseDescription() {
-    this.#describe = null;
+  static #onCloseDescription(event, target) {
+    /*
+     * The backdrop carries the same action as the close button, so a tap on the
+     * dimmed area dismisses the panel. Anything inside the panel has to be let
+     * through, though: without this guard the action would also fire for taps
+     * on the description itself — selecting an inline reference, or starting a
+     * scroll — and the panel would shut the moment anyone tried to read it.
+     */
+    const isBackdrop = target.classList.contains("phonedry-describe");
+    if ( isBackdrop && event.target.closest(".phonedry-describe__panel") ) return;
+
+    /*
+     * Dismissing means going back while there is anywhere to go back to.
+     *
+     * Following a link replaces what the panel shows, so a player who taps away
+     * from a cited rule means "take me back to what I was reading", not "throw
+     * away both". Only at the root does dismissing close the panel. The control
+     * changes to a back arrow to say so, and the backdrop follows the same
+     * rule — the two must agree, or which one you use decides whether you keep
+     * your place.
+     */
+    const previous = this.#describeStack.pop();
+    this.#describe = previous ?? null;
+
     this.render({ parts: ["describe"] });
   }
 
@@ -752,9 +1097,13 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
    *
    * @this {PhonedryShell}
    */
-  static #onSetSpellSort(event, target) {
+  static async #onSetSpellSort(event, target) {
     this.#browserSort = target.dataset.sort;
-    this.render({ parts: ["browser"] });
+    await this.render({ parts: ["browser"] });
+
+    // Reordering puts different spells under the same scroll position, so the
+    // player would land in the middle of a list they have not seen the top of.
+    this.#resetScroll(".phonedry-browser__results");
   }
 
   /**
@@ -809,6 +1158,8 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
 
     this.element.removeEventListener("input", this.#onFormulaInput);
     this.element.removeEventListener("keydown", this.#onFormulaKey);
+    this.element.removeEventListener("click", this.#onContentLink);
+    this.element.removeEventListener("error", this.#onImageError, true);
 
     for ( const [hook, id] of this.#hooks ) Hooks.off(hook, id);
     this.#hooks = [];

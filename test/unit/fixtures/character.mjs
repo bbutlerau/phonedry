@@ -21,7 +21,11 @@ export const CONFIG_DND5E = {
     wis: { label: "Wisdom", abbreviation: "wis" }
   },
   skills: {
-    ath: { label: "Athletics", ability: "str" },
+    // dnd5e points each skill at the rule that covers it, in its own reference
+    // compendium. Present on one skill and absent on the others, so the
+    // fallback path stays covered too.
+    ath: { label: "Athletics", ability: "str",
+      reference: "Compendium.dnd5e.content24.JournalEntry.phbAppendixDRule.JournalEntryPage.rIR7ttYDUpH3tMzv" },
     ste: { label: "Stealth", ability: "dex" },
     med: { label: "Medicine", ability: "wis" }
   },

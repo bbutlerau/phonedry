@@ -218,12 +218,69 @@
 /*  Hit points                                  */
 /* -------------------------------------------- */
 
+/*
+ * Hit points and resting share a row.
+ *
+ * Hit points keep the larger share because the bar is the biggest target on the
+ * sheet and the most-used one. Resting earns the space beside it rather than a
+ * row of its own: it is what you reach for when the bar is low, and the header
+ * has to stay short enough that the skills list is not pushed off the screen.
+ */
+.phonedry-active .phonedry-vitality {
+  display: flex;
+  align-items: stretch;
+  gap: var(--phonedry-gap-md);
+  margin-top: var(--phonedry-gap-md);
+}
+
+.phonedry-active .phonedry-rests {
+  display: flex;
+  gap: var(--phonedry-gap-sm);
+  flex: none;
+}
+
+.phonedry-active .phonedry-rest {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+
+  /* Wide enough for a thumb, narrow enough that hit points keep the majority
+     of the row. */
+  min-width: 3.25rem;
+  padding: var(--phonedry-gap-sm);
+
+  background: var(--phonedry-bg);
+  border: 1px solid var(--phonedry-border);
+  border-radius: 0.375rem;
+  color: var(--phonedry-muted);
+}
+
+/* A long rest is the bigger commitment — a night of game time, and the one
+   that resets everything — so it is the one given colour. */
+.phonedry-active .phonedry-rest--long {
+  color: var(--phonedry-info);
+}
+
+.phonedry-active .phonedry-rest__label {
+  font-size: 0.5625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1;
+
+  white-space: nowrap;
+}
+
 .phonedry-active .phonedry-hp {
   position: relative;
   display: block;
-  width: 100%;
+
+  /* Takes the rest of the row beside the rest buttons. */
+  flex: 1;
+  min-width: 0;
+
   padding: 0;
-  margin-top: var(--phonedry-gap-md);
   border: 1px solid var(--phonedry-border);
   border-radius: 0.375rem;
   overflow: hidden;
@@ -359,9 +416,18 @@
  * fighter and five or six for a caster with exhaustion, and hard-coding three
  * columns would leave a ragged orphan on the second line.
  */
+/*
+ * Six readouts across, on the narrowest phone.
+ *
+ * Adding hit dice took this from five to six, and at the old minimum the sixth
+ * wrapped onto a row of its own — one lozenge stretched across the full width,
+ * which reads as an error rather than as a layout. These are readouts rather
+ * than targets, so they can go narrower than the touch floor without costing
+ * anything.
+ */
 .phonedry-active .phonedry-vitals {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(4.25rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(3.375rem, 1fr));
   gap: var(--phonedry-gap-sm);
   margin-top: var(--phonedry-gap-md);
 }
@@ -737,13 +803,22 @@
   background: var(--phonedry-border);
 }
 
+/*
+ * Deliberately shorter than the general 44px button floor.
+ *
+ * That floor is there for controls reached for under pressure; these three are
+ * a segmented control that spans the full width, so each is already an enormous
+ * target horizontally and the height can come back to pay for the rest buttons
+ * above without any of them becoming hard to hit.
+ */
 .phonedry-active .phonedry-mode__option {
+  min-height: 2rem;
   border: none;
   border-radius: 0;
   background: var(--phonedry-bg);
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   color: var(--phonedry-muted);
 }
 
@@ -1294,6 +1369,503 @@
 }
 
 /* -------------------------------------------- */
+/*  Actions                                     */
+/* -------------------------------------------- */
+
+.phonedry-active .phonedry-actions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.phonedry-active .phonedry-action {
+  border-bottom: 1px solid var(--phonedry-border);
+
+  /*
+   * What kind of thing the row is, as a stripe down the left edge — the same
+   * device the spells screen uses for where a spell came from, and for a
+   * related reason. Everything on this screen is "something you tap", but a
+   * weapon, a class feature with limited uses and a consumable that runs out
+   * behave differently enough that telling them apart without reading is worth
+   * a column of colour.
+   *
+   * Unlike the spell stripes there is no unmarked ordinary case: every row is
+   * one kind or another, so every row gets one.
+   */
+  border-left: 3px solid var(--phonedry-kind, var(--phonedry-border));
+}
+
+.phonedry-active .phonedry-kind--weapon { --phonedry-kind: var(--phonedry-bad); }
+.phonedry-active .phonedry-kind--feat { --phonedry-kind: #9b7fd4; }
+.phonedry-active .phonedry-kind--consumable { --phonedry-kind: var(--phonedry-ok); }
+.phonedry-active .phonedry-kind--equipment { --phonedry-kind: var(--phonedry-info); }
+.phonedry-active .phonedry-kind--tool { --phonedry-kind: #c98a4b; }
+
+/* Effects can come from a spell as well as from an item type the actions
+   screen knows about, so the palette is shared rather than duplicated. */
+.phonedry-active .phonedry-kind--spell { --phonedry-kind: var(--phonedry-accent); }
+
+/* The stripe says the rows differ; this says how. A colour on its own is a
+   code the player has to learn and remember. */
+.phonedry-active .phonedry-action__type {
+  color: var(--phonedry-kind, var(--phonedry-muted));
+}
+
+/*
+ * The whole row is the button, unlike a spell row where a preparation toggle
+ * has to share the space. Nothing here competes for the tap, so the target gets
+ * the full width — the largest it can be, which is what a phone wants for the
+ * control used every round.
+ */
+.phonedry-active .phonedry-action__use {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--phonedry-gap-md);
+
+  width: 100%;
+  min-height: var(--phonedry-touch-target);
+
+  /* Foundry sets an explicit height on buttons, which a grid row would
+     otherwise inherit and clip a two-line row against. */
+  height: auto;
+
+  padding: var(--phonedry-gap-sm) var(--phonedry-gap-sm);
+  background: transparent;
+  border: none;
+  text-align: left;
+}
+
+/* An exhausted feature is dimmed rather than disabled. dnd5e is what decides
+   whether a use is available, and a sheet that refused the tap would be
+   enforcing a rule the system might not — a GM can hand back a use, and
+   nothing here should get in the way of that. */
+.phonedry-active .phonedry-action--spent .phonedry-action__use {
+  opacity: 0.5;
+}
+
+.phonedry-active .phonedry-action__icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  border-radius: 0.25rem;
+  object-fit: cover;
+}
+
+/* min-width: 0 is what lets the middle column shrink so the numbers on the
+   right are never pushed off the screen; without it a grid track refuses to go
+   below its content's intrinsic width. */
+.phonedry-active .phonedry-action__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.phonedry-active .phonedry-action__name,
+.phonedry-active .phonedry-action__meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.phonedry-active .phonedry-action__meta {
+  font-size: 0.6875rem;
+  color: var(--phonedry-muted);
+}
+
+.phonedry-active .phonedry-action__numbers {
+  display: flex;
+  align-items: baseline;
+  gap: var(--phonedry-gap-md);
+  padding-right: var(--phonedry-gap-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The attack bonus is the number read first and the one that has to be right,
+   so it is the only one given the accent. */
+.phonedry-active .phonedry-action__tohit {
+  font-size: 0.9375rem;
+  color: var(--phonedry-accent);
+}
+
+.phonedry-active .phonedry-action__damage {
+  font-size: 0.8125rem;
+  color: var(--phonedry-text);
+}
+
+.phonedry-active .phonedry-action__uses {
+  font-size: 0.8125rem;
+  color: var(--phonedry-muted);
+}
+
+.phonedry-active .phonedry-action__uses-max {
+  font-size: 0.6875rem;
+}
+
+/* -------------------------------------------- */
+/*  Conditions                                  */
+/* -------------------------------------------- */
+
+/*
+ * A grid of chips rather than a list of rows.
+ *
+ * There are eighteen conditions and they are set and cleared constantly, so
+ * what matters is fitting as many as possible on screen at once while keeping
+ * every target thumb-sized. A column of eighteen rows would be three screens of
+ * scrolling to find "prone".
+ */
+.phonedry-active .phonedry-conditions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+  gap: var(--phonedry-gap-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The exhaustion chip carries an extra line for its level, which makes its
+   grid row taller than the others. Stretching the cells keeps every chip in
+   that row the same height instead of leaving a gap under the short ones. */
+.phonedry-active .phonedry-conditions > li {
+  display: flex;
+}
+
+.phonedry-active .phonedry-condition {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+
+  width: 100%;
+  min-height: var(--phonedry-touch-target);
+
+  /* Foundry sets an explicit height on buttons, which would clip the second
+     line on a chip that wraps. */
+  height: auto;
+
+  padding: var(--phonedry-gap-sm);
+  background: var(--phonedry-surface);
+  border: 1px solid var(--phonedry-border);
+  border-radius: 0.375rem;
+  color: var(--phonedry-muted);
+}
+
+/*
+ * An active condition is filled, not merely outlined.
+ *
+ * This is the one state on the sheet a player checks under pressure — "am I
+ * still restrained?" — so the difference has to survive a glance at arm's
+ * length in bad light, which a border colour alone does not. The icon comes up
+ * to full opacity at the same time, so the cue is carried twice.
+ */
+.phonedry-active .phonedry-condition--on {
+  background: var(--phonedry-bad);
+  border-color: var(--phonedry-bad);
+  color: #fff;
+}
+
+.phonedry-active .phonedry-condition__icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: none;
+  opacity: 0.55;
+
+  /*
+   * Flatten every icon to a white silhouette.
+   *
+   * dnd5e's condition icons are not consistent: some are dark line art, some
+   * are light, and a couple carry colour. A plain `invert` therefore turns half
+   * of them black against a dark surface. `brightness(0)` crushes each to solid
+   * black whatever it started as, and the invert then lifts all of them to the
+   * same white — so the set reads as one family and legibility no longer
+   * depends on which artist drew which condition.
+   */
+  filter: brightness(0) invert(1);
+}
+
+.phonedry-active .phonedry-condition--on .phonedry-condition__icon {
+  opacity: 1;
+}
+
+.phonedry-active .phonedry-condition__name {
+  font-size: 0.6875rem;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.phonedry-active .phonedry-condition__level {
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.phonedry-active .phonedry-condition__max {
+  font-size: 0.625rem;
+  opacity: 0.7;
+}
+
+/* -------------------------------------------- */
+
+/*
+ * Effects arriving from elsewhere are rows with a stripe, deliberately unlike
+ * the chips above. They are not switches of the same kind — one is a thing you
+ * do to yourself, the other a record of something that happened to you — and
+ * making them look alike invites a player to switch off someone else's spell
+ * and assume that ended it.
+ */
+.phonedry-active .phonedry-effects {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.phonedry-active .phonedry-effect {
+  border-bottom: 1px solid var(--phonedry-border);
+  border-left: 3px solid var(--phonedry-kind, var(--phonedry-accent));
+}
+
+.phonedry-active .phonedry-effect__toggle {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: var(--phonedry-gap-md);
+
+  width: 100%;
+  min-height: var(--phonedry-touch-target);
+  height: auto;
+  padding: var(--phonedry-gap-sm);
+  background: transparent;
+  border: none;
+  text-align: left;
+}
+
+/* A disabled effect stays on the list rather than vanishing: it is still a
+   record of something that happened, and removing the row would make the list
+   jump under the finger that just tapped it. */
+.phonedry-active .phonedry-effect--off {
+  opacity: 0.45;
+}
+
+.phonedry-active .phonedry-effect--off .phonedry-effect__name {
+  text-decoration: line-through;
+}
+
+.phonedry-active .phonedry-effect__icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  border-radius: 0.25rem;
+}
+
+.phonedry-active .phonedry-effect__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.phonedry-active .phonedry-effect__name,
+.phonedry-active .phonedry-effect__meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.phonedry-active .phonedry-effect__meta {
+  font-size: 0.6875rem;
+  color: var(--phonedry-muted);
+}
+
+/* -------------------------------------------- */
+/*  Target picker                               */
+/* -------------------------------------------- */
+
+/*
+ * Anchored to the bottom like the description panel, and for the same reason:
+ * it arrives under the thumb that opened it, and everything it offers stays
+ * within reach of one.
+ */
+.phonedry-active .phonedry-targets {
+  position: fixed;
+  inset: 0;
+  z-index: 65;
+
+  display: flex;
+  align-items: flex-end;
+  background: rgb(0 0 0 / 55%);
+}
+
+.phonedry-active .phonedry-targets[hidden] {
+  display: none;
+}
+
+.phonedry-active .phonedry-targets__panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 80dvh;
+
+  background: var(--phonedry-surface);
+  border-top: 1px solid var(--phonedry-border);
+  border-radius: 0.75rem 0.75rem 0 0;
+
+  padding:
+    var(--phonedry-gap-lg)
+    calc(var(--phonedry-safe-right) + var(--phonedry-gap-lg))
+    calc(var(--phonedry-safe-bottom) + var(--phonedry-gap-lg))
+    calc(var(--phonedry-safe-left) + var(--phonedry-gap-lg));
+}
+
+.phonedry-active .phonedry-targets__head {
+  display: flex;
+  align-items: center;
+  gap: var(--phonedry-gap-md);
+  flex: none;
+}
+
+.phonedry-active .phonedry-targets__titles {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.phonedry-active .phonedry-targets__name {
+  font-size: 1.125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.phonedry-active .phonedry-targets__count {
+  font-size: 0.75rem;
+  color: var(--phonedry-muted);
+}
+
+.phonedry-active .phonedry-targets__close {
+  flex: none;
+  margin-left: auto;
+  width: var(--phonedry-touch-target);
+  background: var(--phonedry-bg);
+  border: 1px solid var(--phonedry-border);
+  border-radius: 0.375rem;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.phonedry-active .phonedry-targets__list {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin-top: var(--phonedry-gap-md);
+}
+
+.phonedry-active .phonedry-targets__heading {
+  margin: var(--phonedry-gap-md) 0 var(--phonedry-gap-sm);
+  border: none;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--phonedry-muted);
+}
+
+.phonedry-active .phonedry-targets__entries {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.phonedry-active .phonedry-target {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--phonedry-gap-md);
+
+  width: 100%;
+  min-height: var(--phonedry-touch-target);
+  height: auto;
+  padding: var(--phonedry-gap-sm);
+  margin-bottom: var(--phonedry-gap-sm);
+
+  background: var(--phonedry-bg);
+  border: 1px solid var(--phonedry-border);
+  border-radius: 0.375rem;
+  text-align: left;
+}
+
+/*
+ * A chosen target is filled rather than ticked.
+ *
+ * This is read at a glance in the middle of a turn, and a checkbox on a phone
+ * is a small mark in a corner. Filling the row means the answer to "who have I
+ * picked" survives a glance rather than needing to be read.
+ */
+.phonedry-active .phonedry-target--on {
+  background: var(--phonedry-accent);
+  border-color: var(--phonedry-accent);
+  color: #241c02;
+}
+
+.phonedry-active .phonedry-target--on .phonedry-target__ac {
+  color: inherit;
+}
+
+/* Defeated combatants stay on the list, dimmed: plenty of things are still
+   legally aimed at one, and removing the row would shift every other one. */
+.phonedry-active .phonedry-target--defeated {
+  opacity: 0.5;
+}
+
+.phonedry-active .phonedry-target__icon {
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 0.25rem;
+  object-fit: cover;
+}
+
+.phonedry-active .phonedry-target__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.phonedry-active .phonedry-target__ac {
+  font-size: 0.75rem;
+  color: var(--phonedry-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.phonedry-active .phonedry-targets__note,
+.phonedry-active .phonedry-targets__warning {
+  flex: none;
+  margin: var(--phonedry-gap-md) 0 0;
+  font-size: 0.8125rem;
+  color: var(--phonedry-muted);
+}
+
+.phonedry-active .phonedry-targets__warning {
+  color: var(--phonedry-bad);
+}
+
+/* The commit, at the bottom where the thumb is and full width so it cannot be
+   missed or mistaken for one of the rows above it. */
+.phonedry-active .phonedry-targets__cast {
+  flex: none;
+  width: 100%;
+  margin-top: var(--phonedry-gap-md);
+  background: var(--phonedry-surface-raised);
+  border: 1px solid var(--phonedry-border);
+  border-radius: 0.375rem;
+  font-weight: 700;
+}
+
+/* -------------------------------------------- */
 /*  Foundry dialogs in WebKit                   */
 /* -------------------------------------------- */
 
@@ -1576,15 +2148,24 @@
     calc(var(--phonedry-safe-left) + var(--phonedry-gap-lg));
 }
 
+/*
+ * Flex rather than a fixed grid, because the icon is optional.
+ *
+ * A rules page — what a held skill or condition resolves to — has no artwork,
+ * and with a three-column grid its title dropped into the icon's column and the
+ * close button into the flexible one: a squashed "Fri..." on the left and a
+ * stretched close box beside it. A layout that counts its children is the wrong
+ * shape for content that does not always have them.
+ */
 .phonedry-active .phonedry-describe__head {
-  display: grid;
-  grid-template-columns: 2.5rem 1fr auto;
+  display: flex;
   align-items: center;
   gap: var(--phonedry-gap-md);
   flex: none;
 }
 
 .phonedry-active .phonedry-describe__icon {
+  flex: none;
   width: 2.5rem;
   height: 2.5rem;
   border: none;
@@ -1595,6 +2176,7 @@
 .phonedry-active .phonedry-describe__titles {
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-width: 0;
 }
 
@@ -1610,13 +2192,77 @@
   color: var(--phonedry-muted);
 }
 
+/*
+ * Enriched links inside a description.
+ *
+ * Foundry styles these for a desktop sheet, where they sit in body text at a
+ * comfortable reading size. Here they are tap targets, so they get padding and
+ * a colour that marks them as followable — the panel answers a tap on one
+ * itself rather than letting Foundry open a desktop window over the sheet.
+ */
+.phonedry-active .phonedry-describe__body a.content-link {
+  display: inline;
+  padding: 0.1em 0.25em;
+  background: var(--phonedry-bg);
+  border: 1px solid var(--phonedry-border);
+  border-radius: 0.25rem;
+  color: var(--phonedry-accent);
+  text-decoration: none;
+  white-space: normal;
+}
+
 .phonedry-active .phonedry-describe__close {
+  flex: none;
+
+  /* Held to the trailing edge whatever precedes it. */
+  margin-left: auto;
+
   width: var(--phonedry-touch-target);
   background: var(--phonedry-bg);
   border: 1px solid var(--phonedry-border);
   border-radius: 0.375rem;
   font-size: 1.5rem;
   line-height: 1;
+}
+
+/*
+ * The facts above a description.
+ *
+ * A two-column grid rather than a row of pills: these are answers to specific
+ * questions — how long does it take, how far does it reach — and a pill strip
+ * makes the reader work out which value answers which. The label column is
+ * fixed so the values line up into a column the eye can run down.
+ */
+.phonedry-active .phonedry-describe__facts {
+  flex: none;
+  margin: var(--phonedry-gap-md) 0 0;
+  padding: var(--phonedry-gap-md);
+  background: var(--phonedry-bg);
+  border: 1px solid var(--phonedry-border);
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+}
+
+.phonedry-active .phonedry-describe__fact {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr;
+  gap: var(--phonedry-gap-md);
+  align-items: baseline;
+}
+
+.phonedry-active .phonedry-describe__fact + .phonedry-describe__fact {
+  margin-top: 0.25rem;
+}
+
+.phonedry-active .phonedry-describe__fact dt {
+  color: var(--phonedry-muted);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.phonedry-active .phonedry-describe__fact dd {
+  margin: 0;
 }
 
 .phonedry-active .phonedry-describe__body {

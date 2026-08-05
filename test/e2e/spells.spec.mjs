@@ -1,5 +1,5 @@
 import { test, expect, devices } from "@playwright/test";
-import { joinGame, reloadAt, collectErrors, PHONE_VIEWPORT } from "./helpers/foundry.mjs";
+import { joinGame, longPress, reloadAt, collectErrors, PHONE_VIEWPORT } from "./helpers/foundry.mjs";
 
 /**
  * Tab bar and spells screen.
@@ -11,30 +11,6 @@ import { joinGame, reloadAt, collectErrors, PHONE_VIEWPORT } from "./helpers/fou
 
 const TOUCH = { ...devices["iPhone 15"], viewport: undefined };
 
-/**
- * Press and hold an element.
- *
- * Playwright has no long-press primitive, so this drives the pointer directly.
- * The element is scrolled into view first: raw mouse events do not scroll the
- * way `click()` does, and pressing at coordinates below the fold silently
- * reaches nothing at all.
- *
- * The finger does not move between down and up, because the gesture layer
- * cancels a hold that drifts — which is what stops a panel appearing mid-scroll.
- *
- * @param {import("@playwright/test").Page} page
- * @param {import("@playwright/test").Locator} locator
- */
-async function longPress(page, locator) {
-  await locator.scrollIntoViewIfNeeded();
-  const box = await locator.boundingBox();
-
-  await page.mouse.move(box.x + (box.width / 2), box.y + (box.height / 2));
-  await page.mouse.down();
-  await page.waitForTimeout(800);
-  await page.mouse.up();
-}
-
 test.describe("spells", () => {
   test("the tab bar swaps sections", async ({ browser }) => {
     const context = await browser.newContext(TOUCH);
@@ -43,6 +19,13 @@ test.describe("spells", () => {
 
     await joinGame(page);
     await reloadAt(page, PHONE_VIEWPORT);
+
+    // The bar is generated from the TABS list, so its order is the order of a
+    // fight: what is reached for every round comes before what is reached for
+    // when there is a spell to cast.
+    expect(await page.locator(".phonedry-tabs__tab").evaluateAll(
+      els => els.map(el => el.dataset.tab)
+    )).toEqual(["stats", "actions", "spells", "conditions"]);
 
     // Stats is where a session starts, and the bar says so.
     await expect(page.locator('.phonedry-tabs__tab[data-tab="stats"]')).toHaveAttribute("aria-current", "page");
@@ -195,7 +178,7 @@ test.describe("spells", () => {
       () => game.modules.get("phonedry").api.shell.actor.items.some(i => i.name === "Inflict Wounds")
     ), "holding a result added the spell").toBe(false);
 
-    await page.locator("[data-action='closeDescription']").click();
+    await page.locator(".phonedry-describe__close").click();
     await page.locator("[data-action='addSpell']").first().click();
 
     // The document is what must change. It also has to arrive with its
@@ -259,8 +242,132 @@ test.describe("spells", () => {
     expect(await page.evaluate(() => game.messages.size),
       "holding a spell also cast it").toBe(before);
 
-    await page.locator("[data-action='closeDescription']").click();
+    await page.locator(".phonedry-describe__close").click();
     await expect(page.locator(".phonedry-describe")).toBeHidden();
+
+    expect(errors).toEqual([]);
+    await context.close();
+  });
+
+  test("preparing a spell leaves the list where it was", async ({ browser }) => {
+    const context = await browser.newContext(TOUCH);
+    const page = await context.newPage();
+
+    await joinGame(page);
+    await reloadAt(page, PHONE_VIEWPORT);
+    await page.locator('.phonedry-tabs__tab[data-tab="spells"]').click();
+
+    const content = page.locator(".phonedry-content");
+
+    // Preparing updates the item, which re-renders the sheet. Without core's
+    // scroll preservation the list jumps to the top, so a player working
+    // through their spells is thrown back after every single one — and the
+    // further down they are, the worse it gets.
+    await content.evaluate(el => el.scrollTop = 400);
+    const before = await content.evaluate(el => el.scrollTop);
+    expect(before, "the list is not long enough for this test to mean anything")
+      .toBeGreaterThan(0);
+
+    const toggle = page.locator("[data-action='togglePrepared']").last();
+    await toggle.scrollIntoViewIfNeeded();
+    const scrolled = await content.evaluate(el => el.scrollTop);
+
+    await toggle.click();
+
+    // Polled rather than read once: the render happens on the item update
+    // arriving back, not on the click.
+    await expect.poll(() => content.evaluate(el => el.scrollTop),
+      { message: "the list scrolled after preparing a spell" }).toBe(scrolled);
+
+    // Put it back, so a rerun starts from the same state.
+    await toggle.click();
+
+    /* --- but a different section starts at the top --- */
+
+    // The other half of the rule: a position measured against the spell list
+    // means nothing against the skills list, and restoring it would land the
+    // player halfway down a list they have not seen the top of.
+    await page.locator('.phonedry-tabs__tab[data-tab="stats"]').click();
+    await expect.poll(() => content.evaluate(el => el.scrollTop)).toBe(0);
+
+    await context.close();
+  });
+
+  test("a spell aimed at creatures asks who, and tells dnd5e", async ({ browser }) => {
+    const context = await browser.newContext(TOUCH);
+    const page = await context.newPage();
+    const errors = collectErrors(page);
+
+    await joinGame(page);
+    await reloadAt(page, PHONE_VIEWPORT);
+    await page.locator('.phonedry-tabs__tab[data-tab="spells"]').click();
+
+    // Only runs where the world has an encounter to pick from. Skipped rather
+    // than failed: the picker falls back to the party without one, and that is
+    // a different path than this test is about.
+    const inCombat = await page.evaluate(() => !!game.combats.active?.combatants.size);
+    test.skip(!inCombat, "no active encounter in the test world");
+
+    /* --- a template spell casts straight through --- */
+
+    // Burning Hands is a cone. Who is caught in it needs the map this client
+    // does not draw, so offering a name list would invite a player to pick
+    // three and believe the area had been resolved.
+    const before = await page.evaluate(() => game.messages.size);
+    await page.locator(".phonedry-spell__cast", { hasText: "Burning Hands" }).first().click();
+    await expect(page.locator(".phonedry-targets"),
+      "a template spell should not ask for targets").toBeHidden();
+
+    // It reaches dnd5e's usage dialog instead, which is the normal path.
+    await page.keyboard.press("Escape");
+
+    /* --- a creature spell asks first --- */
+
+    await page.locator(".phonedry-spell__cast", { hasText: "Bless" }).first().click();
+
+    const picker = page.locator(".phonedry-targets");
+    await expect(picker).toBeVisible();
+
+    // Enemies lead: in a fight the common case is aiming at the thing trying to
+    // kill you, and the list is read under time pressure.
+    //
+    // Matched case-insensitively because the uppercasing is the stylesheet's
+    // doing rather than the data's, the same as the spell level headings.
+    expect((await page.locator(".phonedry-targets__heading").allInnerTexts())
+      .map(t => t.toLowerCase())).toEqual(["enemies", "allies"]);
+
+    // Nothing was cast merely by opening the picker.
+    expect(await page.evaluate(() => game.messages.size)).toBe(before);
+
+    const rows = page.locator(".phonedry-target");
+    await rows.first().click();
+    await expect(rows.first()).toHaveAttribute("aria-pressed", "true");
+
+    await page.locator("[data-action='confirmTargets']").click();
+    await expect(picker).toBeHidden();
+
+    // dnd5e's own usage dialog comes next, to pick the slot. It is deliberately
+    // kept — it carries the slot and upcasting rules — so the card only exists
+    // once it is confirmed.
+    const usage = page.locator("dialog.application.activity-usage");
+    await expect(usage).toBeVisible();
+    await usage.locator("[data-action='use']").click();
+
+    /* --- and dnd5e is told who --- */
+
+    // The load-bearing assertion. dnd5e builds this list from `game.user.targets`,
+    // a set of canvas tokens that is permanently empty here — so without the
+    // flags being supplied the card names nobody, and per-target save buttons
+    // have nothing to act on.
+    await expect.poll(() => page.evaluate(
+      () => [...game.messages].at(-1)?.getFlag("dnd5e", "targets")?.map(t => t.name) ?? []
+    ), { message: "the chat card did not carry the chosen targets" }).not.toEqual([]);
+
+    const flagged = await page.evaluate(
+      () => [...game.messages].at(-1).getFlag("dnd5e", "targets")
+    );
+    expect(flagged[0]).toHaveProperty("uuid");
+    expect(flagged[0]).toHaveProperty("ac");
 
     expect(errors).toEqual([]);
     await context.close();

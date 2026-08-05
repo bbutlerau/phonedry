@@ -41,7 +41,16 @@ export const SETTINGS = {
  */
 export const TABS = [
   { id: "stats", label: "PHONEDRY.Tabs.Stats", icon: "fa-shield-halved" },
-  { id: "spells", label: "PHONEDRY.Tabs.Spells", icon: "fa-book-sparkles" }
+
+  // Between stats and spells because that is how often each is reached for in a
+  // fight: attacks and features every round, spells when there is one to cast.
+  { id: "actions", label: "PHONEDRY.Tabs.Actions", icon: "fa-hand-fist" },
+
+  { id: "spells", label: "PHONEDRY.Tabs.Spells", icon: "fa-book-sparkles" },
+
+  // Last, because it is the one consulted rather than acted from. Conditions
+  // are set once when something happens and then read for the rest of a fight.
+  { id: "conditions", label: "PHONEDRY.Tabs.Conditions", icon: "fa-heart-pulse" }
 ];
 
 /** The section shown on first load. */

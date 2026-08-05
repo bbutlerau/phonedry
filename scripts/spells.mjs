@@ -10,22 +10,7 @@
  * that we would get wrong are the parts nobody notices until a session.
  */
 
-/**
- * Run an operation, reporting failures to the player rather than the console.
- *
- * @param {Function} fn
- * @param {string} describe
- * @returns {Promise<*|null>}
- */
-async function attempt(fn, describe) {
-  try {
-    return await fn();
-  } catch ( error ) {
-    console.error("phonedry | spell action failed", error);
-    ui.notifications?.error(game.i18n.format("PHONEDRY.Spells.Failed", { what: describe }));
-    return null;
-  }
-}
+import { attempt } from "./attempt.mjs";
 
 /**
  * Cast a spell.
@@ -38,8 +23,23 @@ async function attempt(fn, describe) {
  * @param {Item} spell
  * @returns {Promise<object|null>}
  */
-export function castSpell(spell) {
-  return attempt(() => spell.use(), `${spell.name}`);
+export function castSpell(spell, targets = []) {
+  /*
+   * Targets are handed to dnd5e as message flags because that is exactly where
+   * it would have put them itself. Its own `getTargetDescriptors` reads
+   * `game.user.targets`, a set of canvas tokens — which on a canvas-free client
+   * is permanently empty, so every card this module produced listed no targets.
+   * Supplying the same shape it builds gets the card back to parity: targets
+   * named, armour classes shown, per-target save buttons working.
+   *
+   * `use` merges what is passed over its own defaults, so an empty list leaves
+   * dnd5e's behaviour untouched rather than overwriting it with nothing.
+   */
+  const message = targets.length
+    ? { data: { flags: { dnd5e: { targets } } } }
+    : {};
+
+  return attempt(() => spell.use({}, {}, message), spell.name, "PHONEDRY.Spells.Failed");
 }
 
 /**
@@ -55,6 +55,7 @@ export function castSpell(spell) {
 export function setPrepared(spell, prepared) {
   return attempt(
     () => spell.update({ "system.prepared": prepared ? 1 : 0 }),
-    game.i18n.localize("PHONEDRY.Spells.Preparation")
+    game.i18n.localize("PHONEDRY.Spells.Preparation"),
+    "PHONEDRY.Spells.Failed"
   );
 }

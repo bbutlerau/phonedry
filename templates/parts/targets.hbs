@@ -1,0 +1,91 @@
+{{!--
+  Choosing who a spell is aimed at.
+
+  This screen exists because of the canvas. Everywhere else in Foundry you
+  target by clicking tokens on a map, and this module never builds one — so a
+  phone player has had no way to say who they were casting at. The documents
+  behind the map are still reachable, and they carry everything the tokens were
+  showing: name, portrait, side, armour class.
+
+  Only for spells aimed at creatures. A fireball is aimed at a patch of ground,
+  and working out who is caught in it needs the map this client does not draw —
+  offering a name list for one would invite a player to pick three and believe
+  the area had been resolved.
+
+  CONSTRAINT: exactly one top-level element. See the note in header.hbs.
+--}}
+<div class="phonedry-targets" {{#unless targets.open}}hidden{{/unless}}>
+  {{#if targets.open}}
+    <div class="phonedry-targets__panel" role="dialog" aria-modal="true"
+         aria-label="{{localize 'PHONEDRY.Targets.Label' name=targets.name}}">
+
+      <div class="phonedry-targets__head">
+        <span class="phonedry-targets__titles">
+          <span class="phonedry-targets__name">{{targets.name}}</span>
+          <span class="phonedry-targets__count">
+            {{#if targets.limit}}
+              {{localize "PHONEDRY.Targets.CountOf" count=targets.count limit=targets.limit}}
+            {{else}}
+              {{localize "PHONEDRY.Targets.Count" count=targets.count}}
+            {{/if}}
+          </span>
+        </span>
+
+        <button type="button" class="phonedry-targets__close" data-action="closeTargets"
+                aria-label="{{localize 'PHONEDRY.Targets.Cancel'}}">&times;</button>
+      </div>
+
+      {{#if targets.empty}}
+        {{!-- No encounter and no party to fall back on. Said plainly, with the
+              cast still available — a spell should never become uncastable
+              because this screen had nothing to offer. --}}
+        <p class="phonedry-targets__note">{{localize "PHONEDRY.Targets.NoneAvailable"}}</p>
+      {{else}}
+        <div class="phonedry-targets__list">
+          {{#each targets.groups}}
+            <section class="phonedry-targets__group">
+              <h2 class="phonedry-targets__heading">{{localize this.label}}</h2>
+              <ul class="phonedry-targets__entries">
+                {{#each this.entries}}
+                  <li>
+                    <button type="button"
+                            class="phonedry-target {{#if this.selected}}phonedry-target--on{{/if}}{{#if this.defeated}} phonedry-target--defeated{{/if}}"
+                            data-action="toggleTarget" data-target-id="{{this.id}}"
+                            aria-pressed="{{#if this.selected}}true{{else}}false{{/if}}">
+                      <img class="phonedry-target__icon" src="{{this.img}}" alt="" />
+                      <span class="phonedry-target__name">{{this.name}}</span>
+                      {{#if this.ac}}
+                        <span class="phonedry-target__ac">{{localize "PHONEDRY.Sheet.ArmourClass"}} {{this.ac}}</span>
+                      {{/if}}
+                    </button>
+                  </li>
+                {{/each}}
+              </ul>
+            </section>
+          {{/each}}
+        </div>
+
+        {{#if targets.over}}
+          {{!-- Stated, not enforced. How many creatures a spell may affect is a
+                rule, and dnd5e owns the rules — but a player who has picked one
+                too many should hear about it before casting, not after. --}}
+          <p class="phonedry-targets__warning">
+            {{localize "PHONEDRY.Targets.Over" limit=targets.limit}}
+          </p>
+        {{/if}}
+      {{/if}}
+
+      {{!-- Casting with nobody selected stays possible throughout. Plenty of
+            tables resolve targeting by talking, and a sheet that refused to
+            cast until someone was ticked would be worse than the problem this
+            screen solves. --}}
+      <button type="button" class="phonedry-targets__cast" data-action="confirmTargets">
+        {{#if targets.none}}
+          {{localize "PHONEDRY.Targets.CastUntargeted"}}
+        {{else}}
+          {{localize "PHONEDRY.Targets.Cast" count=targets.count}}
+        {{/if}}
+      </button>
+    </div>
+  {{/if}}
+</div>

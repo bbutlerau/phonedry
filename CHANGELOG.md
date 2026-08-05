@@ -117,10 +117,156 @@ All notable changes to Phonedry are recorded here. Versions follow
   logout with it, so there was no way to change user from a phone at all.
 - Holding a spell in the compendium browser shows what it does before adding
   it, which is when a player most wants to know.
+- Actions screen, between stats and spells: everything the character can do on
+  their turn that is not a spell, grouped by what it costs — actions, then
+  bonus actions, then reactions. Attack rows carry their to-hit and damage;
+  limited-use features carry their remaining uses. Holding a row describes it,
+  as on the spells screen.
+
+  A row is an *activity*, not an item. Channel Divinity is one item carrying
+  three activities over a single pool of uses, so each gets its own row and a
+  tap does the thing rather than opening a dialog to ask which was meant.
+
+  Weapons and equipment appear only while equipped, since a greatsword at the
+  bottom of the pack is not an attack you can make this turn. Consumables and
+  features are always listed, because a flask of holy water is thrown from the
+  pack. Spells stay on their own screen rather than appearing in both places.
+
+  Duplicate stacks of one item fold into a single row with their charges
+  summed, so two flasks of holy water read as one entry with two throws left.
+  The tap spends whichever stack still has a charge, which is what makes the
+  second flask reachable once the first is empty.
+
+  Each row carries a coloured stripe and a word for what kind of thing it is —
+  weapon, feature, consumable, equipment, tool — following the spell source
+  stripes, where the colour says the rows differ and the word says how. Rows
+  are ordered by kind before name, so a group reads as blocks matching those
+  colours with attacks at the top, rather than as an alphabetical jumble of a
+  mace, a lamp and a domain feature.
+- Short and long rest, in the header where they are always reachable, and hit
+  dice alongside the other vitals so a player can tell before resting whether
+  resting is worth anything.
+
+  Both open dnd5e's own rest dialog rather than suppressing it. That is the
+  opposite of the choice made for initiative, and right for the same reason it
+  was wrong there: initiative's dialog only collected an advantage mode the
+  sheet already knew, whereas this one is *where hit dice are spent*. Removing
+  it would mean rebuilding hit dice, slot recovery, limited-use recovery,
+  exhaustion and the rest variants.
+
+  Without this there was no way to recover spell slots, limited uses or hit
+  points from a phone at all, which made a whole session unplayable from one.
+
+  To make room, hit points now share their row with the rest buttons instead of
+  spanning the full width, and the advantage selector is shorter. It stays an
+  easy target because it spans the whole width — the height was paying for
+  nothing. The header ends up shorter than before despite gaining two controls.
+- Status screen: the standard D&D conditions as a grid of toggles, and
+  separately, whatever is currently affecting the character. Holding a
+  condition shows the rule it applies.
+
+  The two are deliberately not one list. A condition is a switch the player
+  owns — you are prone because you dropped prone. An effect is a record of
+  something that arrived from elsewhere: a Bless someone cast, a Rage a feature
+  turned on. Presenting them alike would invite a player to switch off a spell
+  someone else is concentrating on and assume that ended it, so effects are
+  rows rather than chips and the screen says in words that turning one off
+  stops it applying to you rather than ending it.
+
+  Toggling goes through core's own `toggleStatusEffect`, so a condition is
+  recognised as that condition by dnd5e, the token HUD and other modules; an
+  effect built by hand would look identical and be none of those things.
+  Exhaustion is a level rather than a switch, and writing the level is the
+  whole of the work — dnd5e derives the penalties from it.
+
+  Only temporary effects are listed. Passive ones are a character's permanent
+  traits rather than things happening to them, and including them would bury
+  the Bless among entries nobody needs mid-fight.
+- Targeting for spells aimed at creatures. Casting one asks who first, listing
+  the active encounter's combatants — enemies before allies, with portraits and
+  armour classes — or the party when no fight is running.
+
+  This exists because of the canvas. Everywhere else in Foundry you target by
+  clicking tokens on a map, and this module never builds one, so a phone player
+  had no way to say who they were casting at. The documents behind the map are
+  still reachable and carry everything the tokens were showing.
+
+  The chosen targets are handed to dnd5e as the message flags it would have
+  built from the canvas itself, so its chat card names them, shows their armour
+  classes, and offers per-target save buttons exactly as on a desktop. They are
+  also broadcast, so a GM watching the map sees the tokens highlighted — though
+  that part is best-effort, since Foundry drops it if the caster is not viewing
+  the same scene.
+
+  Template spells are deliberately excluded. A fireball is aimed at a patch of
+  ground, and who is caught in it needs the map this client does not draw —
+  offering a name list would invite a player to pick three and believe the area
+  had been resolved.
+
+  Casting without choosing anyone stays available throughout. Plenty of tables
+  resolve targeting by talking, and a sheet that refused to cast until someone
+  was ticked would be worse than the problem this solves.
+- Artwork that fails to load falls back to a silhouette instead of a browser
+  broken-image glyph. Missing art is ordinary — a module uninstalled, a world
+  copied without its user files — and a row of broken glyphs reads as the sheet
+  being broken rather than as one picture being absent.
+- Descriptions now lead with the facts: casting time, range, target, duration
+  and components, above the text rather than buried in it. Answering "how long
+  does this take and how far does it reach" previously meant reading the whole
+  description.
+
+  Every value is dnd5e's own composed string. Casting time and range each come
+  from several fields and vary by rules version, so deriving them would be
+  reimplementing the system to arrive at a string it has already written.
+
+  It applies to more than spells — a feature and a weapon carry the same
+  labels, so holding either answers the same questions — and rows with nothing
+  to say are left out rather than shown blank.
+- Holding an action shows what it does, as on the spells screen. dnd5e gives an
+  activity no description of its own, so this is the item's rules text — which
+  is the useful thing to read anyway.
+- Holding a skill shows the rule it covers, read from dnd5e's own reference
+  compendium. A skill is not an item and has no description, and what a player
+  wants mid-session is what the skill is *for* rather than how its number was
+  arrived at. Skills whose rule page is not installed simply offer no hold,
+  rather than a hold that opens nothing and swallows the roll.
 - Unit tests for the actor-to-view-model mappers. These need no Foundry, no
   browser and no world, so unlike the smoke tests they can run in CI.
 
 ### Fixed
+- Following a link inside a description trapped the player. Descriptions are
+  full of them — Radiance of the Dawn cites Darkness — and Foundry answers a
+  click by opening that document's own sheet: a desktop application, sized for
+  a desktop, whose close button lands off the edge of a phone screen. With the
+  sidebar suppressed there was then no way back short of reloading the client.
+
+  Links are now answered inside the description panel, which can already render
+  both a rules page and an item — so a cited rule opens in the same box rather
+  than in a window over the top of it.
+
+  Following one keeps a trail. While there is something behind it, both the
+  panel's control and a tap on the dimmed area go back rather than dismissing,
+  and the control shows a back arrow instead of a cross to say so: reading a
+  cited rule should not cost you the rule you were reading it from. Only at
+  the root does either one close the panel.
+- The description panel put its close button on the left and squeezed the title
+  into a corner whenever the subject had no artwork — which is every rule page,
+  so every held skill and condition. The head counted on always having an icon
+  to fill its first column.
+- The description panel could only be dismissed by its close button, which sits
+  at the top of a panel anchored to the bottom of the screen — so on a tall
+  phone it is in the middle, and reaching past it to tap the dimmed area above
+  does nothing. That area now dismisses the panel, as it does in any other
+  bottom sheet on either platform.
+- Preparing a spell scrolled the list back to the top. Preparing updates the
+  item, which re-renders the sheet, and a replaced element starts at the top —
+  so a player working down their spell list was thrown back after every one,
+  and the further down they were, the worse it got. The scrolling parts now
+  declare themselves to core, which preserves the position across a re-render.
+
+  Switching tab, searching and re-sorting still return to the top, because
+  there the content changes identity: a position measured against the old list
+  would land the player halfway down one they have not seen the top of.
 - A `?phonedry=` override was lost whenever it was needed most. Opening
   `/game?phonedry=off` while not logged in sends Foundry to its join page,
   which does not load modules, and joining lands back on `/game` with the query

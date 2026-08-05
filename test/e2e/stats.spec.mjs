@@ -1,6 +1,6 @@
 import { test, expect, devices } from "@playwright/test";
 import {
-  joinGame, reloadAt, collectErrors, PHONE_VIEWPORT, LANDSCAPE_PHONE_VIEWPORT
+  joinGame, longPress, reloadAt, collectErrors, PHONE_VIEWPORT, LANDSCAPE_PHONE_VIEWPORT
 } from "./helpers/foundry.mjs";
 
 /**
@@ -148,9 +148,81 @@ test.describe("stats screen", () => {
       () => page.evaluate(() => [...game.messages].at(-1)?.flavor ?? "")
     ).toContain("Saving Throw");
 
+    /* --- and holding a skill reads the rule instead of rolling it --- */
+
+    // A skill is not an item, so there is no description to show: what a player
+    // wants at the table is what the skill covers, which dnd5e keeps as a page
+    // in its own reference compendium. Holding resolves that uuid rather than
+    // anything the character owns.
+    await expect(page.locator(".phonedry-describe")).toBeHidden();
+
+    const held = await page.evaluate(() => game.messages.size);
+    await longPress(page, page.locator('[data-roll="skill"][data-roll-key="ath"]'));
+
+    await expect(page.locator(".phonedry-describe")).toBeVisible();
+    await expect(page.locator(".phonedry-describe__name")).toHaveText("Athletics");
+    await expect(page.locator(".phonedry-describe__body")).not.toBeEmpty();
+
+    // A hold that also fired the tap would read the rule and roll the skill.
+    expect(await page.evaluate(() => game.messages.size),
+      "holding a skill also rolled it").toBe(held);
+
+    await page.locator(".phonedry-describe__close").click();
+
     await context.close();
   });
 
+
+  test("hit dice are visible and resting opens dnd5e's own dialog", async ({ browser }) => {
+    const context = await browser.newContext(TOUCH);
+    const page = await context.newPage();
+    const errors = collectErrors(page);
+
+    await joinGame(page);
+    await reloadAt(page, PHONE_VIEWPORT);
+
+    /* --- the pool a short rest spends --- */
+
+    // Read against the actor rather than a hard-coded number, so this keeps
+    // meaning something if the test character gains a level.
+    const hd = await page.evaluate(() => {
+      const { value, max } = game.modules.get("phonedry").api.shell.actor.system.attributes.hd;
+      return { value, max };
+    });
+
+    await expect(page.locator(".phonedry-vitals__item", { hasText: /hit dice/i }))
+      .toContainText(`${hd.value}/${hd.max}`);
+
+    /* --- resting --- */
+
+    await page.locator('[data-action="rest"][data-rest="short"]').click();
+
+    // dnd5e's own dialog, not one of ours. Matched on its classes rather than
+    // its title so this does not depend on the wording.
+    const dialog = page.locator("dialog.application.rest.short-rest");
+    await expect(dialog).toBeVisible();
+
+    // The load-bearing assertion, and the reason this dialog is kept rather
+    // than suppressed the way initiative's was: it is where hit dice are
+    // actually spent. If a future change starts skipping it, spending hit dice
+    // from a phone quietly stops being possible.
+    await expect(dialog.locator("select")).toContainText(/d\d+/);
+
+    // WebKit renders Foundry's dialogs with their content collapsed unless the
+    // module's stylesheet intervenes. Playwright's WebKit does not reproduce
+    // that, so this cannot prove the fix — but a dialog with no height at all
+    // would be caught here rather than on someone's phone.
+    const height = await dialog.evaluate(el => el.getBoundingClientRect().height);
+    expect(height, "the rest dialog rendered with no height").toBeGreaterThan(200);
+
+    // Closed rather than confirmed. Resting would spend the character's hit
+    // dice and recover their slots, which the spells tests read.
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+
+    expect(errors).toEqual([]);
+    await context.close();
+  });
 
   test("the advantage selector changes the formula of the next roll", async ({ browser }) => {
     const context = await browser.newContext(TOUCH);
