@@ -52,6 +52,13 @@ The two platforms fail differently, and both need testing:
   is in force.
 - **iOS is where the memory ceiling bites.** Android's limits are more generous,
   so a build that feels fine on a Pixel can still be killed on an iPhone.
+- **Long-press is not available as a gesture.** iOS claims a hold to start a
+  text selection and raise its Copy / Look Up callout, which lands on top of
+  whatever the app was doing. `preventDefault` on `contextmenu` does not stop
+  it; `user-select: none` plus `-webkit-touch-callout: none` stops the
+  selection, but the gesture is still not worth building on. Anything that
+  needs a second action per control needs a visible control instead. This cost
+  a milestone's worth of gesture code to learn.
 - Safe-area insets matter on both — notches on iOS, punch-hole cutouts and
   gesture bars on Android — and both need `viewport-fit=cover` to report
   anything but zero.

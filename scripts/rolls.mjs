@@ -18,10 +18,10 @@
  * for a decision the player usually has not got — the overwhelming majority of
  * rolls are straight ones.
  *
- * Phonedry moves that choice into a gesture instead: a tap rolls, a long press
- * asks. So these wrappers pass `configure: false` to suppress the dialog and
- * state the advantage mode explicitly, which is the same pair of values the
- * dialog would have produced.
+ * Phonedry moves that choice into a control the player sets before rolling, so
+ * these wrappers pass `configure: false` to suppress the dialog and state the
+ * advantage mode explicitly, which is the same pair of values the dialog would
+ * have produced.
  */
 
 /**
@@ -168,42 +168,17 @@ export function rollInitiative(actor) {
 /* -------------------------------------------- */
 
 /**
- * Ask the player how to roll.
+ * Whether a mode is one the player should be reminded about.
  *
- * Shown on a long press, and built from core's DialogV2 rather than our own
- * DOM: it already handles focus, dismissal and the backdrop, and it costs
- * nothing extra to load because core is loaded regardless.
+ * The advantage selector is sticky — it stays where it was put until it is
+ * changed — which is the behaviour a player wants when a spell has granted them
+ * advantage for a whole fight. The hazard is the other side of that: a mode
+ * left on silently skews every subsequent roll. Anything non-normal therefore
+ * gets a loud, permanent indicator rather than a subtle highlight.
  *
- * @param {string} title  What is being rolled, shown as the dialog heading.
- * @returns {Promise<string|null>} A ROLL_MODE value, or null if dismissed.
+ * @param {string} mode  A ROLL_MODE value.
+ * @returns {boolean}
  */
-export async function promptRollMode(title) {
-  const { DialogV2 } = foundry.applications.api;
-
-  return DialogV2.wait({
-    window: { title },
-    classes: ["phonedry", "phonedry-roll-mode"],
-    content: "",
-    buttons: [
-      {
-        action: ROLL_MODE.ADVANTAGE,
-        label: game.i18n.localize("PHONEDRY.Rolls.Advantage"),
-        class: "phonedry-roll-mode__advantage"
-      },
-      {
-        action: ROLL_MODE.NORMAL,
-        label: game.i18n.localize("PHONEDRY.Rolls.Normal"),
-        default: true
-      },
-      {
-        action: ROLL_MODE.DISADVANTAGE,
-        label: game.i18n.localize("PHONEDRY.Rolls.Disadvantage"),
-        class: "phonedry-roll-mode__disadvantage"
-      }
-    ],
-
-    // Dismissing must mean "I changed my mind", not "roll normally". A stray
-    // tap on the backdrop should never commit a roll to chat.
-    rejectClose: false
-  });
+export function isModeConspicuous(mode) {
+  return mode !== ROLL_MODE.NORMAL;
 }

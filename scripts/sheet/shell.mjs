@@ -14,9 +14,8 @@ import { MODULE_ID } from "../constants.mjs";
 import { isTabletViewport } from "../detect.mjs";
 import { resolveCharacter } from "../data/character.mjs";
 import { buildStatsView } from "../data/stats.mjs";
-import { bindPressable } from "./gestures.mjs";
 import {
-  ROLL_MODE, promptRollMode, rollAbilityCheck, rollSavingThrow, rollSkill,
+  ROLL_MODE, rollAbilityCheck, rollSavingThrow, rollSkill,
   rollDeathSave, rollInitiative
 } from "../rolls.mjs";
 
@@ -32,7 +31,9 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       positioned: false
     },
     actions: {
-      rollInitiative: PhonedryShell.#onRollInitiative
+      roll: PhonedryShell.#onRoll,
+      rollInitiative: PhonedryShell.#onRollInitiative,
+      setRollMode: PhonedryShell.#onSetRollMode
     }
   };
 
@@ -62,11 +63,30 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   #actor = null;
 
-  /** Removes the gesture listeners bound at the last render. @type {Function|null} */
-  #unbindGestures = null;
-
   /** Hook registrations to clean up on close. @type {Array<[string, number]>} */
   #hooks = [];
+
+  /**
+   * How the next roll will be made.
+   *
+   * Sticky: it stays where the player put it rather than resetting after each
+   * roll, because advantage usually comes from something that lasts a whole
+   * fight — a spell, a condition, a flanking position — and re-selecting it
+   * before every attack would be worse than the problem it solves. The cost is
+   * that a forgotten mode skews later rolls, which is why the indicator is
+   * deliberately impossible to miss rather than tasteful.
+   *
+   * Not persisted. A session starting on anything other than a straight roll
+   * would be a genuine trap, since nobody would remember setting it.
+   *
+   * @type {string}
+   */
+  #rollMode = ROLL_MODE.NORMAL;
+
+  /** The current roll mode. Exposed for the smoke tests and the console. */
+  get rollMode() {
+    return this.#rollMode;
+  }
 
   /**
    * The viewport width at the last render, used to tell a rotation apart from a
@@ -115,6 +135,7 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
     return Object.assign(context, {
       isTablet: isTabletViewport(),
       actor,
+      rollMode: this.#rollMode,
 
       // The view model, or null. The template branches on this rather than on
       // the actor, so an actor that somehow fails to map still lands on the
@@ -135,7 +156,7 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   _onRender(context, options) {
     super._onRender(context, options);
 
-    this.#bindGestures();
+    this.#applyRollMode();
     this.#registerHooks();
 
     // Re-registering the same function reference for the same event is a no-op
@@ -145,22 +166,22 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
-   * Attach tap/hold handling to everything marked as rollable.
+   * Reflect the current roll mode in the DOM.
    *
-   * Rebound on every render because a partial re-render replaces the element
-   * the previous binding was attached to. The old binding is torn down first —
-   * without that, a sheet that has re-rendered five times rolls five times per
-   * tap, which is the kind of bug that only shows up after a long session.
+   * The mode lives on the root element as a data attribute, which lets CSS tint
+   * every roll control at once without the shell knowing which controls exist.
+   * That matters as the sheet grows: spells and weapons in later milestones get
+   * the same treatment for free.
+   *
+   * Called on every render as well as on change, because a partial re-render
+   * rebuilds the buttons and would otherwise lose their pressed state.
    */
-  #bindGestures() {
-    this.#unbindGestures?.();
-    this.#unbindGestures = bindPressable(this.element, "[data-roll]", {
-      onTap: el => this.#roll(el, ROLL_MODE.NORMAL),
-      onHold: async el => {
-        const mode = await promptRollMode(el.dataset.rollLabel ?? el.textContent.trim());
-        if ( mode ) this.#roll(el, mode);
-      }
-    });
+  #applyRollMode() {
+    this.element.dataset.rollMode = this.#rollMode;
+
+    for ( const button of this.element.querySelectorAll("[data-action='setRollMode']") ) {
+      button.setAttribute("aria-pressed", String(button.dataset.mode === this.#rollMode));
+    }
   }
 
   /**
@@ -197,30 +218,49 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   /* -------------------------------------------- */
 
   /**
-   * Dispatch a roll from a pressed element.
+   * Dispatch a roll from a tapped control.
    *
    * The element carries what to roll in `data-roll` and `data-roll-key`, which
    * keeps the template declarative and means adding a roll type is a template
    * change plus one line here.
    *
-   * @param {HTMLElement} el
-   * @param {string} mode  A ROLL_MODE value.
+   * @this {PhonedryShell}
+   * @param {PointerEvent} event
+   * @param {HTMLElement} target  The element carrying `data-action`.
    */
-  #roll(el, mode) {
-    if ( !this.#actor ) return;
-    const { roll: type, rollKey: key } = el.dataset;
+  static #onRoll(event, target) {
+    if ( !this.actor ) return;
+    const { roll: type, rollKey: key } = target.dataset;
+    const mode = this.rollMode;
 
     switch ( type ) {
-      case "check": return rollAbilityCheck(this.#actor, key, mode);
-      case "save": return rollSavingThrow(this.#actor, key, mode);
-      case "skill": return rollSkill(this.#actor, key, mode);
-      case "death": return rollDeathSave(this.#actor, mode);
+      case "check": return rollAbilityCheck(this.actor, key, mode);
+      case "save": return rollSavingThrow(this.actor, key, mode);
+      case "skill": return rollSkill(this.actor, key, mode);
+      case "death": return rollDeathSave(this.actor, mode);
     }
   }
 
   /**
-   * Initiative is a plain action rather than a pressable: it keeps dnd5e's own
-   * dialog, so there is no advantage choice for a long press to offer.
+   * Change how the next roll will be made.
+   *
+   * Applied directly to the DOM rather than through a re-render: the feedback
+   * has to be immediate, and rebuilding the header to flip two attributes would
+   * be both slower and more code.
+   *
+   * @this {PhonedryShell}
+   * @param {PointerEvent} event
+   * @param {HTMLElement} target
+   */
+  static #onSetRollMode(event, target) {
+    this.#rollMode = target.dataset.mode;
+    this.#applyRollMode();
+  }
+
+  /**
+   * Initiative keeps dnd5e's own dialog, so the roll mode does not apply to it
+   * — the dialog offers the same choice, and it is the only entry point that
+   * places the actor into the combat tracker correctly.
    *
    * @this {PhonedryShell}
    */
@@ -232,9 +272,6 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /** @inheritdoc */
   _onClose(options) {
-    this.#unbindGestures?.();
-    this.#unbindGestures = null;
-
     for ( const [hook, id] of this.#hooks ) Hooks.off(hook, id);
     this.#hooks = [];
 

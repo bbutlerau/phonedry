@@ -37,9 +37,14 @@ All notable changes to Phonedry are recorded here. Versions follow
 - Rolling: every ability check, saving throw and skill check is a tap, and each
   delegates to dnd5e's own API so chat cards, active effects and third-party
   roll modules keep working. Initiative rolls from the header.
-- Long-press a roll to choose advantage or disadvantage. dnd5e decides between
-  its roll dialog and a straight roll by reading modifier keys, which a phone
-  does not have — without this every tap would open a desktop-shaped dialog.
+- An advantage selector in the header, applying to every roll on the sheet.
+  dnd5e decides between its roll dialog and a straight roll by reading modifier
+  keys, which a phone does not have — without this every tap would open a
+  desktop-shaped dialog. It is sticky, so advantage granted for a whole fight
+  is set once, and every roll control is tinted while it is not normal so a
+  forgotten setting cannot quietly skew a session.
+- Text selection is disabled across the sheet, which stops iOS turning a slow
+  tap on a label into a Copy / Look Up callout over the top of it.
 - Death saves appear on the sheet only while the character is at zero hit
   points, showing successes and failures as pips with a roll button.
 - Proficiency is shown as four distinct states — none, half, proficient and
@@ -61,6 +66,11 @@ All notable changes to Phonedry are recorded here. Versions follow
   into a broken tabletop. Phonedry now records that the change was its own and
   hands the canvas back on any load where it is not active, while leaving alone
   players who chose no-canvas mode themselves.
+- The initiative box sat shorter than the readouts beside it, and one ability
+  box — always the last — was a few pixels taller than the other five. Foundry
+  sets an explicit height on buttons, which makes a grid cell ignore
+  `align-self: stretch` entirely; the ability boxes now state their height
+  rather than leaving it for the grid to work out.
 - The shell rendered nothing at all: its Handlebars part declared two top-level
   elements without `root: true`, which made core throw inside the render
   promise. Because the canvas was disabled first, the failure presented as a

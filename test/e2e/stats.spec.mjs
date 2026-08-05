@@ -18,9 +18,6 @@ import { joinGame, reloadAt, collectErrors, PHONE_VIEWPORT } from "./helpers/fou
 
 const TOUCH = { ...devices["iPhone 15"], viewport: undefined };
 
-/** How long to hold for the long-press gesture; comfortably past HOLD_MS. */
-const HOLD_MS = 700;
-
 /**
  * Read the formula of the most recent chat message roll.
  *
@@ -31,28 +28,6 @@ function lastRollFormula(page) {
     const message = [...game.messages].at(-1);
     return message?.rolls?.[0]?.formula ?? null;
   });
-}
-
-/**
- * Press and hold an element, then release.
- *
- * Playwright has no long-press primitive, so this drives the pointer directly.
- * The finger is not moved between down and up, because the gesture layer
- * cancels a hold that drifts — which is the behaviour that stops a dialog
- * appearing mid-scroll.
- *
- * @param {import("@playwright/test").Page} page
- * @param {import("@playwright/test").Locator} locator
- */
-async function longPress(page, locator) {
-  const box = await locator.boundingBox();
-  const x = box.x + (box.width / 2);
-  const y = box.y + (box.height / 2);
-
-  await page.mouse.move(x, y);
-  await page.mouse.down();
-  await page.waitForTimeout(HOLD_MS);
-  await page.mouse.up();
 }
 
 test.describe("stats screen", () => {
@@ -91,7 +66,10 @@ test.describe("stats screen", () => {
     // grid or flex rule that shrinks a row without anyone noticing.
     const undersized = await page.locator("[data-roll]").evaluateAll(
       els => els
-        .map(el => ({ label: el.dataset.rollLabel, height: el.getBoundingClientRect().height }))
+        .map(el => ({
+          roll: `${el.dataset.roll}:${el.dataset.rollKey ?? ""}`,
+          height: el.getBoundingClientRect().height
+        }))
         .filter(el => el.height < 44)
     );
     expect(undersized).toEqual([]);
@@ -148,25 +126,66 @@ test.describe("stats screen", () => {
     await context.close();
   });
 
-  test("holding a skill offers advantage, and choosing it changes the formula", async ({ browser }) => {
+  test("the advantage selector changes the formula of the next roll", async ({ browser }) => {
     const context = await browser.newContext(TOUCH);
     const page = await context.newPage();
 
     await joinGame(page);
     await reloadAt(page, PHONE_VIEWPORT);
 
-    await longPress(page, page.locator('[data-roll="skill"][data-roll-key="ath"]'));
+    // Advantage used to live on a long press. It cannot: on iOS the system
+    // claims the hold to select text and raises a Copy / Look Up callout over
+    // the sheet, so the gesture is unreachable on half the target devices.
+    await page.locator('[data-mode="advantage"]').click();
+    await expect(page.locator("#phonedry-shell")).toHaveAttribute("data-roll-mode", "advantage");
 
-    const dialog = page.locator(".phonedry-roll-mode");
-    await expect(dialog, "long press did not open the roll mode dialog").toBeVisible();
-
-    // Exact, because "Advantage" is a substring of "Disadvantage".
-    await dialog.getByRole("button", { name: "Advantage", exact: true }).click();
+    await page.locator('[data-roll="skill"][data-roll-key="ath"]').click();
 
     // 2d20kh is what advantage looks like once dnd5e has built the roll. If
     // Phonedry's flags stopped reaching the system, this would come back as a
     // plain d20 while the interface still claimed advantage had been applied.
     await expect.poll(() => lastRollFormula(page)).toContain("2d20");
+    expect(await page.evaluate(
+      () => [...game.messages].at(-1).rolls[0].terms[0].modifiers.join()
+    )).toContain("adv");
+
+    // Sticky, so a fight-long advantage is set once. The tint on every roll
+    // control is what stops that becoming a silent trap.
+    await page.locator('[data-roll="skill"][data-roll-key="ste"]').click();
+    await expect.poll(() => lastRollFormula(page)).toContain("2d20");
+
+    // Disadvantage is also two dice, so the formula alone cannot tell the two
+    // apart — the die's own modifier is the only place they differ. dnd5e
+    // tags them "adv" and "dis" rather than using kh/kl directly.
+    await page.locator('[data-mode="disadvantage"]').click();
+    await page.locator('[data-roll="skill"][data-roll-key="ath"]').click();
+    await expect.poll(() => lastRollFormula(page)).toContain("2d20");
+    expect(await page.evaluate(
+      () => [...game.messages].at(-1).rolls[0].terms[0].modifiers.join()
+    )).toContain("dis");
+
+    await page.locator('[data-mode="normal"]').click();
+    await page.locator('[data-roll="skill"][data-roll-key="ath"]').click();
+    await expect.poll(() => lastRollFormula(page)).toMatch(/^1?d20/);
+
+    await context.close();
+  });
+
+  test("nothing on the sheet is selectable text", async ({ browser }) => {
+    // iOS turns a slow tap on a label into a text selection and a Copy /
+    // Look Up callout over the sheet. This is the rule that prevents it, and
+    // it cannot be verified anywhere but on the device — so the least this can
+    // do is fail loudly if the rule is ever dropped.
+    const context = await browser.newContext(TOUCH);
+    const page = await context.newPage();
+
+    await joinGame(page);
+    await reloadAt(page, PHONE_VIEWPORT);
+
+    const selectable = await page.locator(".phonedry-skill__name").evaluateAll(
+      els => els.filter(el => getComputedStyle(el).userSelect !== "none").length
+    );
+    expect(selectable).toBe(0);
 
     await context.close();
   });

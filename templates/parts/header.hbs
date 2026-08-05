@@ -74,6 +74,31 @@
         </div>
       {{/if}}
     </div>
+
+    {{!--
+      How the next roll is made. This is a visible control rather than a
+      gesture: a long press is the obvious way to offer this on a phone, and it
+      is unusable on iOS, where the system hijacks the hold to select text and
+      raise a Copy / Look Up callout over whatever the app was doing.
+
+      It is sticky, so advantage granted for a whole fight is set once. The
+      shell mirrors the value onto the root element, which is what lets the
+      stylesheet tint every roll control at once while it is not normal.
+    --}}
+    <div class="phonedry-mode" role="group" aria-label="{{localize 'PHONEDRY.Rolls.ModeLabel'}}">
+      <button type="button" class="phonedry-mode__option phonedry-mode__option--advantage"
+              data-action="setRollMode" data-mode="advantage" aria-pressed="false">
+        {{localize "PHONEDRY.Rolls.Advantage"}}
+      </button>
+      <button type="button" class="phonedry-mode__option"
+              data-action="setRollMode" data-mode="normal" aria-pressed="true">
+        {{localize "PHONEDRY.Rolls.Normal"}}
+      </button>
+      <button type="button" class="phonedry-mode__option phonedry-mode__option--disadvantage"
+              data-action="setRollMode" data-mode="disadvantage" aria-pressed="false">
+        {{localize "PHONEDRY.Rolls.Disadvantage"}}
+      </button>
+    </div>
   {{else}}
     <h1 class="phonedry-header__name">{{localize "PHONEDRY.Title"}}</h1>
   {{/if}}

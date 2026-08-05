@@ -21,7 +21,6 @@
       "Exhaustion": "Exhaustion",
       "Failures": "Failures",
       "HitPoints": "Hit points",
-      "HoldHint": "Tap to roll. Hold for advantage or disadvantage.",
       "Initiative": "Init",
       "Proficiency": "Prof",
       "RollDeathSave": "Roll death save",
@@ -36,7 +35,8 @@
     "Rolls": {
       "Advantage": "Advantage",
       "Disadvantage": "Disadvantage",
-      "Normal": "Roll",
+      "ModeLabel": "How to roll",
+      "Normal": "Normal",
       "Failed": "Phonedry could not roll {what}. See the console for details."
     },
 

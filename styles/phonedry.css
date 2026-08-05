@@ -11,6 +11,9 @@
      floor for anything tapped mid-combat. */
   --phonedry-touch-target: 44px;
 
+  /* The label-and-score strip above the two roll buttons in an ability box. */
+  --phonedry-ability-label-row: 1.25rem;
+
   --phonedry-gap-sm: 0.25rem;
   --phonedry-gap-md: 0.5rem;
   --phonedry-gap-lg: 1rem;
@@ -106,6 +109,25 @@
 }
 
 /*
+ * No text selection anywhere on the sheet.
+ *
+ * This is not tidiness. On iOS, resting a finger on a label long enough starts
+ * a text selection and raises the system Copy / Look Up callout over the top of
+ * whatever the app was doing — which is what made a long-press gesture
+ * unworkable here, and which can still be triggered by an ordinary slow tap.
+ *
+ * `user-select` alone does not stop it: the callout is separate, and needs
+ * `-webkit-touch-callout` as well. Both are required, and neither has any
+ * effect on the desktop browser used for development, so this is a rule that
+ * can only be verified on the device.
+ */
+.phonedry-active .phonedry-shell {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/*
  * Anything tappable, in one rule.
  *
  * Every one of these is a target for a finger during combat, so they share a
@@ -114,21 +136,27 @@
  * and suppressing the tap highlight avoids a grey flash competing with our own
  * press state.
  */
-.phonedry-active .phonedry-shell button,
-.phonedry-active .phonedry-shell [data-roll] {
+.phonedry-active .phonedry-shell button {
   min-height: var(--phonedry-touch-target);
+
+  /* Foundry gives buttons an explicit height, and an explicit height makes a
+     grid or flex cell ignore `align-self: stretch` entirely — which is why the
+     initiative button sat shorter than the readouts beside it however the
+     alignment was declared. Handing the height back to `auto` is what lets the
+     stretch apply at all. */
+  height: auto;
+
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  user-select: none;
   font: inherit;
   color: inherit;
   cursor: pointer;
 }
 
-/* The press state, applied by the gesture layer while a finger is down. It is
-   deliberately instant: any transition makes a quick tap feel unacknowledged. */
-.phonedry-active .phonedry-pressing {
-  background: var(--phonedry-surface-raised) !important;
+/* Press feedback. Deliberately instant: any transition makes a quick tap feel
+   unacknowledged. */
+.phonedry-active .phonedry-shell button:active {
+  background: var(--phonedry-surface-raised);
 }
 
 /* -------------------------------------------- */
@@ -265,9 +293,16 @@
   border-radius: 0.375rem;
   text-align: center;
 
-  /* Vitals are readouts, not targets, so they are exempt from the tap-target
-     floor that the button rule imposes. The one that IS a button opts back in
-     below. */
+  /* Every vital is the same height as the tallest, so the row reads as one
+     band rather than as boxes at slightly different sizes.
+
+     Explicit, because a <button> in a grid does not stretch to its row the way
+     a <div> does — which left the initiative box visibly shorter than the
+     readouts beside it. Stating it applies the same rule to both. */
+  align-self: stretch;
+
+  /* Readouts are not tap targets, so they are exempt from the floor the button
+     rule imposes. The one that IS a button opts back in below. */
   min-height: 0;
 }
 
@@ -341,6 +376,7 @@
 .phonedry-active .phonedry-abilities {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+
   gap: var(--phonedry-gap-sm);
   margin: 0;
   padding: 0;
@@ -353,6 +389,21 @@
     "label score"
     "check save";
   grid-template-columns: 1fr 1fr;
+
+  /* An ability box is exactly one label row plus one tap target, stated as a
+     height rather than left for the grid to work out.
+
+     This is not premature precision. Left automatic, exactly one of the six
+     boxes — always the last — came out four pixels taller than the rest, and
+     the two cells measured identically in every box property we could read, so
+     whatever sized it differently was not in this stylesheet. An explicit
+     height makes the question moot: the cells cannot disagree about something
+     none of them is deciding.
+
+     The extra 2px covers the top and bottom borders, so the two rows fit the
+     content box exactly under `box-sizing: border-box`. */
+  grid-template-rows: var(--phonedry-ability-label-row) var(--phonedry-touch-target);
+  height: calc(var(--phonedry-ability-label-row) + var(--phonedry-touch-target) + 2px);
   align-items: center;
 
   background: var(--phonedry-surface);
@@ -586,28 +637,66 @@
 }
 
 /* -------------------------------------------- */
-/*  Roll mode dialog                            */
+/*  Roll mode selector                          */
 /* -------------------------------------------- */
 
+.phonedry-active .phonedry-mode {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  margin-top: var(--phonedry-gap-md);
+  border: 1px solid var(--phonedry-border);
+  border-radius: 0.375rem;
+  overflow: hidden;
+  background: var(--phonedry-border);
+}
+
+.phonedry-active .phonedry-mode__option {
+  border: none;
+  border-radius: 0;
+  background: var(--phonedry-bg);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--phonedry-muted);
+}
+
 /*
- * Core's DialogV2 is desktop-shaped by default: buttons in a tight row, sized
- * for a mouse. Stacking them full width turns three cramped targets into three
- * unmissable ones, which matters because this dialog only ever appears as the
- * result of a deliberate long press mid-combat.
+ * The selected state uses `aria-pressed` as its hook rather than a class, so
+ * the styling and the accessibility information cannot drift apart — there is
+ * only one thing to keep correct.
  */
-.phonedry-active .phonedry-roll-mode .form-footer {
-  flex-direction: column;
-  gap: var(--phonedry-gap-md);
+.phonedry-active .phonedry-mode__option[aria-pressed="true"] {
+  background: var(--phonedry-surface-raised);
+  color: var(--phonedry-text);
+  font-weight: 700;
 }
 
-.phonedry-active .phonedry-roll-mode button {
-  width: 100%;
-  min-height: var(--phonedry-touch-target);
-  font-size: 1rem;
+.phonedry-active .phonedry-mode__option--advantage[aria-pressed="true"] {
+  background: var(--phonedry-ok);
+  color: #10240c;
 }
 
-.phonedry-active .phonedry-roll-mode__advantage { border-color: var(--phonedry-ok); }
-.phonedry-active .phonedry-roll-mode__disadvantage { border-color: var(--phonedry-bad); }
+.phonedry-active .phonedry-mode__option--disadvantage[aria-pressed="true"] {
+  background: var(--phonedry-bad);
+  color: #2a0b0a;
+}
+
+/*
+ * While the mode is not normal, every roll control on the sheet is tinted.
+ *
+ * The selector is sticky, so the failure this guards against is a player
+ * forgetting it is set and quietly rolling a whole session with advantage. A
+ * highlight on the control alone would sit in a header they have stopped
+ * looking at; tinting the thing they are actually tapping cannot be missed.
+ */
+.phonedry-active .phonedry-shell[data-roll-mode="advantage"] [data-action="roll"] {
+  box-shadow: inset 0 -2px 0 var(--phonedry-ok);
+}
+
+.phonedry-active .phonedry-shell[data-roll-mode="disadvantage"] [data-action="roll"] {
+  box-shadow: inset 0 -2px 0 var(--phonedry-bad);
+}
 
 /* -------------------------------------------- */
 /*  Tablet                                      */
