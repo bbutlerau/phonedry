@@ -56,6 +56,32 @@ The two platforms fail differently, and both need testing:
   gesture bars on Android — and both need `viewport-fit=cover` to report
   anything but zero.
 
+## Where to look things up
+
+For questions about **Foundry's behaviour**, read the bundled source in the
+container before reaching for documentation:
+
+```bash
+docker exec foundry grep -n "<symbol>" /home/node/resources/app/public/scripts/foundry.mjs
+```
+
+That file is the exact build in use, and it has been decisive every time so
+far — hook ordering during startup, the `root: true` requirement on Handlebars
+parts, the permanent resolution notification, the persistence of
+`core.noCanvas`. These are behavioural details that documentation either
+glosses or omits, and each one presented as a blank screen rather than an
+error. Core's own classes are also the best reference for how an
+ApplicationV2 subclass should be configured: find one doing the same job and
+match it.
+
+Context7 (`plugin:context7`) is the right tool for **API surface** questions,
+particularly dnd5e's data model, which shifts between majors — the Activities
+rework in 5.x being the obvious case. Also useful for Playwright and Vitest
+configuration rather than guessing at options.
+
+The distinction: source for *how Foundry behaves*, Context7 for *what an API
+offers*. When they disagree, the container wins.
+
 ## Rules that keep the module correct
 
 - **Never reimplement dnd5e's rules.** Every roll delegates to the system's own
