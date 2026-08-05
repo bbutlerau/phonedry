@@ -785,6 +785,125 @@
 }
 
 /* -------------------------------------------- */
+/*  Roll log                                    */
+/* -------------------------------------------- */
+
+/*
+ * Foundry reports roll results in chat, and chat lives in the sidebar this
+ * module suppresses — so without this panel the sheet rolls correctly and
+ * silently. It sits at the bottom, within reach of a thumb, and takes no height
+ * at all until the first roll of the session.
+ */
+.phonedry-active .phonedry-log {
+  flex: none;
+  border-top: 1px solid var(--phonedry-border);
+  background: var(--phonedry-surface);
+  padding-bottom: var(--phonedry-safe-bottom);
+}
+
+.phonedry-active .phonedry-log[hidden] {
+  display: none;
+}
+
+.phonedry-active .phonedry-log__latest,
+.phonedry-active .phonedry-log__entry {
+  display: grid;
+
+  /* Flavour takes the slack; the dice and total are sized to their content so
+     the totals form a straight right-hand column down the history. */
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: var(--phonedry-gap-md);
+
+  width: 100%;
+  padding: var(--phonedry-gap-sm) var(--phonedry-gap-lg);
+  background: transparent;
+  border: none;
+  text-align: left;
+}
+
+.phonedry-active .phonedry-log__flavor {
+  font-size: 0.8125rem;
+  color: var(--phonedry-muted);
+
+  /* "Wisdom Ability Check (Advantage)" does not fit a phone beside two dice
+     and a total, and wrapping it would make the bar jump height between
+     rolls. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.phonedry-active .phonedry-log__dice {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.phonedry-active .phonedry-log__die {
+  min-width: 1.4rem;
+  padding: 0.05rem 0.2rem;
+  background: var(--phonedry-bg);
+  border: 1px solid var(--phonedry-border);
+  border-radius: 0.25rem;
+  font-size: 0.8125rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * The die advantage threw away. Showing it is most of the reason for showing
+ * dice at all — without it an advantage roll looks like one d20 that disagrees
+ * with the total.
+ */
+.phonedry-active .phonedry-log__die--dropped {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.phonedry-active .phonedry-log__die--max {
+  border-color: var(--phonedry-ok);
+  color: var(--phonedry-ok);
+}
+
+.phonedry-active .phonedry-log__die--min {
+  border-color: var(--phonedry-bad);
+  color: var(--phonedry-bad);
+}
+
+.phonedry-active .phonedry-log__more {
+  align-self: center;
+  font-size: 0.75rem;
+  color: var(--phonedry-muted);
+}
+
+.phonedry-active .phonedry-log__total {
+  min-width: 2.25rem;
+  font-size: 1.25rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.phonedry-active .phonedry-log__total--critical { color: var(--phonedry-ok); }
+.phonedry-active .phonedry-log__total--fumble { color: var(--phonedry-bad); }
+
+.phonedry-active .phonedry-log__history {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  /* Capped so the history can never bury the sheet it belongs to. */
+  max-height: 40vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-bottom: 1px solid var(--phonedry-border);
+  background: var(--phonedry-bg);
+}
+
+.phonedry-active .phonedry-log__entry + .phonedry-log__entry {
+  border-top: 1px solid var(--phonedry-border);
+}
+
+/* -------------------------------------------- */
 /*  dnd5e's roll dialog                         */
 /* -------------------------------------------- */
 
@@ -872,7 +991,8 @@
   /* The sheet is hidden rather than merely covered, so a stray tap cannot land
      on a roll button behind the prompt. */
   .phonedry-active .phonedry-header,
-  .phonedry-active .phonedry-content {
+  .phonedry-active .phonedry-content,
+  .phonedry-active .phonedry-log {
     display: none;
   }
 }

@@ -55,6 +55,14 @@ All notable changes to Phonedry are recorded here. Versions follow
 - Initiative is a tap like every other roll, with no Foundry dialog involved.
   It uses the sheet's advantage selector and files the result with the combat
   tracker exactly as before.
+- A roll log at the bottom of the sheet, showing what was rolled and what it
+  came to. Foundry reports results in chat, chat lives in the sidebar, and this
+  module suppresses the sidebar — so until now every roll the sheet made was
+  correct and invisible. The bar shows the latest roll and opens into the last
+  twenty. Individual dice are shown with the one advantage discarded struck
+  through, since otherwise an advantage roll looks like a single d20
+  disagreeing with its own total, and naturals and criticals are marked using
+  dnd5e's judgement rather than a comparison against 20.
 - Death saves appear on the sheet only while the character is at zero hit
   points, showing successes and failures as pips with a roll button.
 - Proficiency is shown as four distinct states — none, half, proficient and

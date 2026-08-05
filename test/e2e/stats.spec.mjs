@@ -297,6 +297,52 @@ test.describe("stats screen", () => {
     await context.close();
   });
 
+  test("rolls are visible on the sheet, not only in a sidebar that is gone", async ({ browser }) => {
+    const context = await browser.newContext(TOUCH);
+    const page = await context.newPage();
+
+    await joinGame(page);
+    await reloadAt(page, PHONE_VIEWPORT);
+
+    // Nothing has been rolled yet, so the log takes no height at all.
+    await expect(page.locator(".phonedry-log")).toBeHidden();
+
+    await page.locator('[data-roll="skill"][data-roll-key="ath"]').click();
+
+    const log = page.locator(".phonedry-log");
+    await expect(log).toBeVisible();
+    await expect(log.locator(".phonedry-log__flavor").first()).toContainText("Athletics");
+
+    // The total shown must be the roll's own, not something recomputed here.
+    const total = await page.evaluate(() => [...game.messages].at(-1).rolls[0].total);
+    await expect(log.locator(".phonedry-log__total").first()).toHaveText(String(total));
+
+    // An advantage roll shows both dice with the discarded one struck through.
+    // Without that the roll looks like a single d20 disagreeing with its total.
+    await page.locator('[data-mode="advantage"]').click();
+    await page.locator('[data-roll="skill"][data-roll-key="ste"]').click();
+
+    await expect.poll(
+      () => log.locator(".phonedry-log__latest .phonedry-log__die").count()
+    ).toBe(2);
+    await expect(
+      log.locator(".phonedry-log__latest .phonedry-log__die--dropped")
+    ).toHaveCount(1);
+
+    // The history is behind a tap, and holds the earlier roll.
+    const history = page.locator(".phonedry-log__history");
+    await expect(history).toBeHidden();
+    await page.locator("[data-action='toggleRollLog']").click();
+    await expect(history).toBeVisible();
+    await expect(history.locator(".phonedry-log__entry")).toHaveCount(2);
+
+    // Newest first: the top of a list is where the eye lands.
+    await expect(history.locator(".phonedry-log__entry").first()).toContainText("Stealth");
+
+    await page.locator('[data-mode="normal"]').click();
+    await context.close();
+  });
+
   test("a phone on its side asks to be turned back", async ({ browser }) => {
     const context = await browser.newContext(TOUCH);
     const page = await context.newPage();

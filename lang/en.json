@@ -37,6 +37,7 @@
       "Disadvantage": "Disadvantage",
       "ModeLabel": "How to roll",
       "Normal": "Normal",
+      "Recent": "Recent rolls",
       "Failed": "Phonedry could not roll {what}. See the console for details."
     },
 

@@ -19,6 +19,7 @@ import {
   rollDeathSave, rollInitiative
 } from "../rolls.mjs";
 import { applyDamage, applyHealing, applyTempHP, parseAmount } from "../hp.mjs";
+import { describeRoll, isOwnRoll, pushRoll } from "../data/roll-log.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -37,7 +38,8 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       rollInitiative: PhonedryShell.#onRollInitiative,
       setRollMode: PhonedryShell.#onSetRollMode,
       stepHp: PhonedryShell.#onStepHp,
-      toggleHpEditor: PhonedryShell.#onToggleHpEditor
+      toggleHpEditor: PhonedryShell.#onToggleHpEditor,
+      toggleRollLog: PhonedryShell.#onToggleRollLog
     }
   };
 
@@ -57,6 +59,11 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   static PARTS = {
     header: { template: `modules/${MODULE_ID}/templates/parts/header.hbs` },
     content: { template: `modules/${MODULE_ID}/templates/parts/stats.hbs` },
+
+    // Below the content, because it sits at the bottom of the screen where a
+    // thumb is. Its own part so a roll can refresh it without rebuilding the
+    // skills list.
+    log: { template: `modules/${MODULE_ID}/templates/parts/roll-log.hbs` },
 
     // Always rendered, shown only by a media query. Whether a phone is being
     // held sideways is not something the shell should have to track.
@@ -108,6 +115,25 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   #hpEditorOpen = false;
 
   /**
+   * Recent rolls, newest first.
+   *
+   * Held in memory only. A roll log that survived a reload would be showing
+   * results from a session that ended days ago, which is worse than showing
+   * nothing — and the authoritative record is chat, which loses nothing.
+   *
+   * @type {object[]}
+   */
+  #rollLog = [];
+
+  /** Whether the roll history is expanded. @type {boolean} */
+  #rollLogOpen = false;
+
+  /** The roll log. Exposed for the smoke tests and the console. */
+  get rollLog() {
+    return this.#rollLog;
+  }
+
+  /**
    * The viewport width at the last render, used to tell a rotation apart from a
    * keyboard appearing. See `#onViewportChange`.
    * @type {number}
@@ -155,6 +181,8 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       isTablet: isTabletViewport(),
       actor,
       rollMode: this.#rollMode,
+      rollLog: this.#rollLog,
+      rollLogOpen: this.#rollLogOpen,
 
       // The view model, or null. The template branches on this rather than on
       // the actor, so an actor that somehow fails to map still lands on the
@@ -228,6 +256,7 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
     return this.element.querySelector(".phonedry-hp-editor__input");
   }
 
+
   /**
    * Keep the sheet in step with the actor.
    *
@@ -257,6 +286,25 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       "createActiveEffect", "updateActiveEffect", "deleteActiveEffect"] ) {
       this.#hooks.push([hook, Hooks.on(hook, refresh)]);
     }
+
+    /*
+     * Rolls arrive as chat messages, which is the only place Foundry reports
+     * them — and chat lives in the sidebar this module suppresses. Without
+     * this, every roll the sheet makes is correct and invisible.
+     */
+    this.#hooks.push(["createChatMessage", Hooks.on("createChatMessage", message => {
+      if ( !isOwnRoll(message, { userId: game.user.id, actorId: this.#actor?.id }) ) return;
+
+      const entry = describeRoll(message);
+      if ( !entry ) return;
+
+      this.#rollLog = pushRoll(this.#rollLog, entry);
+
+      // Only the log is re-rendered. A roll changes nothing about the abilities
+      // or skills, and rebuilding them on every d20 would make the sheet stutter
+      // through a combat round.
+      this.render({ parts: ["log"] });
+    })]);
   }
 
   /* -------------------------------------------- */
@@ -381,6 +429,21 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
     // happen. The panel stays open, because damage tends to arrive in a run.
     const cleared = this.#hpInput;
     if ( cleared ) cleared.value = "";
+  }
+
+  /**
+   * Show or hide the roll history.
+   *
+   * Re-rendered rather than toggled in the DOM, because the bar itself changes
+   * with the state: it shows the most recent roll while collapsed and a heading
+   * while open, so that the list underneath does not repeat it. Only the log
+   * part is rebuilt.
+   *
+   * @this {PhonedryShell}
+   */
+  static #onToggleRollLog() {
+    this.#rollLogOpen = !this.#rollLogOpen;
+    this.render({ parts: ["log"] });
   }
 
   /* -------------------------------------------- */

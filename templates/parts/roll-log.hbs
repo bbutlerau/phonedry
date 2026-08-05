@@ -1,0 +1,62 @@
+{{!--
+  The roll log: what was just rolled, and what came before it.
+
+  Sits at the bottom of the screen, which is where a thumb is. It stays out of
+  the way entirely until the first roll of the session — an empty panel taking
+  up height on a phone would be worse than nothing.
+
+  CONSTRAINT: exactly one top-level element. See the note in header.hbs.
+--}}
+<div class="phonedry-log" {{#unless rollLog.length}}hidden{{/unless}}>
+
+  {{!-- The history, above the bar and hidden until asked for. Newest first. --}}
+  <ul class="phonedry-log__history" id="phonedry-log-history" {{#unless rollLogOpen}}hidden{{/unless}}>
+    {{#each rollLog}}
+      <li class="phonedry-log__entry">
+        <span class="phonedry-log__flavor">{{this.flavor}}</span>
+        <span class="phonedry-log__dice">
+          {{#each this.dice}}
+            <span class="phonedry-log__die
+                        {{#if this.dropped}}phonedry-log__die--dropped{{/if}}
+                        {{#if this.natural20}}phonedry-log__die--max{{/if}}
+                        {{#if this.natural1}}phonedry-log__die--min{{/if}}">{{this.value}}</span>
+          {{/each}}
+          {{#if this.moreDice}}<span class="phonedry-log__more">+{{this.moreDice}}</span>{{/if}}
+        </span>
+        <span class="phonedry-log__total
+                     {{#if this.critical}}phonedry-log__total--critical{{/if}}
+                     {{#if this.fumble}}phonedry-log__total--fumble{{/if}}">{{this.total}}</span>
+      </li>
+    {{/each}}
+  </ul>
+
+  {{!--
+    The bar: the most recent roll while collapsed, and a plain heading once the
+    history is open — the list already starts with that roll, and showing it
+    twice reads as a bug rather than as a summary.
+  --}}
+  <button type="button" class="phonedry-log__latest" data-action="toggleRollLog"
+          aria-expanded="{{#if rollLogOpen}}true{{else}}false{{/if}}"
+          aria-controls="phonedry-log-history">
+    {{#if rollLogOpen}}
+      <span class="phonedry-log__flavor">{{localize "PHONEDRY.Rolls.Recent"}}</span>
+    {{else}}
+      {{#with rollLog.[0]}}
+        <span class="phonedry-log__flavor">{{this.flavor}}</span>
+        <span class="phonedry-log__dice">
+          {{#each this.dice}}
+            <span class="phonedry-log__die
+                        {{#if this.dropped}}phonedry-log__die--dropped{{/if}}
+                        {{#if this.natural20}}phonedry-log__die--max{{/if}}
+                        {{#if this.natural1}}phonedry-log__die--min{{/if}}">{{this.value}}</span>
+          {{/each}}
+          {{#if this.moreDice}}<span class="phonedry-log__more">+{{this.moreDice}}</span>{{/if}}
+        </span>
+        <span class="phonedry-log__total
+                     {{#if this.critical}}phonedry-log__total--critical{{/if}}
+                     {{#if this.fumble}}phonedry-log__total--fumble{{/if}}">{{this.total}}</span>
+      {{/with}}
+    {{/if}}
+  </button>
+
+</div>
