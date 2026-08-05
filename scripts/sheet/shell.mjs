@@ -52,7 +52,11 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   static PARTS = {
     header: { template: `modules/${MODULE_ID}/templates/parts/header.hbs` },
-    content: { template: `modules/${MODULE_ID}/templates/parts/stats.hbs` }
+    content: { template: `modules/${MODULE_ID}/templates/parts/stats.hbs` },
+
+    // Always rendered, shown only by a media query. Whether a phone is being
+    // held sideways is not something the shell should have to track.
+    rotate: { template: `modules/${MODULE_ID}/templates/parts/rotate.hbs` }
   };
 
   /* -------------------------------------------- */

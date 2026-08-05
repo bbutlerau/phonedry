@@ -1,5 +1,7 @@
 import { test, expect, devices } from "@playwright/test";
-import { joinGame, reloadAt, collectErrors, PHONE_VIEWPORT } from "./helpers/foundry.mjs";
+import {
+  joinGame, reloadAt, collectErrors, PHONE_VIEWPORT, LANDSCAPE_PHONE_VIEWPORT
+} from "./helpers/foundry.mjs";
 
 /**
  * Stats screen smoke tests.
@@ -167,6 +169,31 @@ test.describe("stats screen", () => {
     await page.locator('[data-mode="normal"]').click();
     await page.locator('[data-roll="skill"][data-roll-key="ath"]').click();
     await expect.poll(() => lastRollFormula(page)).toMatch(/^1?d20/);
+
+    await context.close();
+  });
+
+  test("a phone on its side asks to be turned back", async ({ browser }) => {
+    const context = await browser.newContext(TOUCH);
+    const page = await context.newPage();
+
+    await joinGame(page);
+    await reloadAt(page, LANDSCAPE_PHONE_VIEWPORT);
+
+    await expect(page.locator(".phonedry-rotate")).toBeVisible();
+
+    // Hidden, not merely covered: a tap that lands on a roll button behind the
+    // prompt would roll it.
+    await expect(page.locator(".phonedry-content")).toBeHidden();
+    await expect(page.locator(".phonedry-header")).toBeHidden();
+
+    // The reason this needs its own test rather than a media query anyone can
+    // read: at 852px wide a landscape phone is past the 768px tablet
+    // breakpoint, and was being handed the tablet layout on a 393px-tall
+    // screen. The height condition is what a width-only rule misses.
+    const isTablet = await page.evaluate(() => game.modules.get("phonedry").api.shell !== null
+      && window.matchMedia("(min-width: 768px) and (min-height: 600px)").matches);
+    expect(isTablet, "landscape phone still matched the tablet layout").toBe(false);
 
     await context.close();
   });

@@ -54,6 +54,11 @@ All notable changes to Phonedry are recorded here. Versions follow
   active effects being applied or removed all refresh it without a reload.
 - Empty state for a player with no character assigned, which distinguishes
   owning none from owning several and says what to ask the GM for.
+- Phones are held upright. A phone turned sideways gets a prompt to turn it
+  back rather than a sheet squeezed into a few hundred pixels of height. There
+  is no way to genuinely lock orientation on the web — the Screen Orientation
+  API needs fullscreen and iOS Safari does not implement the lock at all — so a
+  prompt is the whole of what the platform offers. Tablets still rotate freely.
 - Tablets lay the abilities out in a single row of six and split the skills
   into two columns, which fits the whole sheet on screen without scrolling.
 - Unit tests for the actor-to-view-model mappers. These need no Foundry, no
@@ -66,6 +71,10 @@ All notable changes to Phonedry are recorded here. Versions follow
   into a broken tabletop. Phonedry now records that the change was its own and
   hands the canvas back on any load where it is not active, while leaving alone
   players who chose no-canvas mode themselves.
+- A phone in landscape was given the tablet layout. At 852px wide it cleared
+  the 768px breakpoint, so six ability boxes were laid out in a row on a screen
+  393px tall. Both the media query and the matching check in script now require
+  a minimum height as well as a width.
 - The initiative box sat shorter than the readouts beside it, and one ability
   box — always the last — was a few pixels taller than the other five. Foundry
   sets an explicit height on buttons, which makes a grid cell ignore

@@ -40,6 +40,10 @@
       "Failed": "Phonedry could not roll {what}. See the console for details."
     },
 
+    "Rotate": {
+      "Message": "Turn your phone upright to use the character sheet."
+    },
+
     "Empty": {
       "Heading": "No character to show",
       "None": "No character is assigned to {user}, and you do not own one in this world. Ask your GM to assign you a character.",

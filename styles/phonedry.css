@@ -699,6 +699,72 @@
 }
 
 /* -------------------------------------------- */
+/*  Portrait lock                               */
+/* -------------------------------------------- */
+
+/*
+ * A phone held sideways is not a usable character sheet. The header alone —
+ * portrait, hit points, vitals, the roll mode selector — is most of a landscape
+ * phone's height before the browser's own chrome is counted, which leaves a
+ * two-row window onto the skills list.
+ *
+ * There is no way to actually lock the orientation. The Screen Orientation API
+ * only works from fullscreen, and iOS Safari does not implement the lock at
+ * all, so a prompt to turn the device back is the whole of what the web
+ * platform offers here.
+ *
+ * The trigger is height, not width. A landscape phone is around 400px tall
+ * where a landscape tablet is 800 or more, so height is what separates "this
+ * device cannot show a sheet sideways" from "this one can" — and a width test
+ * would catch an iPad mini in portrait as well.
+ */
+.phonedry-active .phonedry-rotate {
+  display: none;
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .phonedry-active .phonedry-rotate {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--phonedry-gap-lg);
+
+    padding: var(--phonedry-gap-lg);
+    background: var(--phonedry-bg);
+    text-align: center;
+  }
+
+  /* The sheet is hidden rather than merely covered, so a stray tap cannot land
+     on a roll button behind the prompt. */
+  .phonedry-active .phonedry-header,
+  .phonedry-active .phonedry-content {
+    display: none;
+  }
+}
+
+/* A phone-sized rectangle standing on its short edge. Drawn in CSS rather than
+   shipped as an image: it is two borders and a radius, and an asset would be a
+   network request for something the stylesheet can say directly. */
+.phonedry-active .phonedry-rotate__icon {
+  width: 3rem;
+  height: 5rem;
+  border: 3px solid var(--phonedry-accent);
+  border-radius: 0.5rem;
+}
+
+.phonedry-active .phonedry-rotate__message {
+  margin: 0;
+  max-width: 20rem;
+  font-size: 1.125rem;
+  color: var(--phonedry-text);
+}
+
+/* -------------------------------------------- */
 /*  Tablet                                      */
 /* -------------------------------------------- */
 
@@ -707,8 +773,12 @@
  * goes to laying the abilities out in a single row of six — the arrangement a
  * paper sheet uses — and to splitting the skills into two columns so the whole
  * list fits without scrolling.
+ *
+ * The height condition is what stops a phone in landscape qualifying. An
+ * iPhone on its side is 852px wide, comfortably past the width breakpoint, and
+ * was picking up the tablet layout on a screen with no room for it.
  */
-@media (min-width: 768px) {
+@media (min-width: 768px) and (min-height: 600px) {
   .phonedry-active .phonedry-abilities {
     grid-template-columns: repeat(6, 1fr);
   }

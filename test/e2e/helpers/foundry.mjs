@@ -19,6 +19,14 @@ export const PHONE_VIEWPORT = { width: 393, height: 852 };
 export const TABLET_VIEWPORT = { width: 820, height: 1180 };
 
 /**
+ * The same iPhone 15 on its side.
+ *
+ * Wider than the 768px tablet breakpoint, which is the trap: on width alone
+ * this reads as a tablet.
+ */
+export const LANDSCAPE_PHONE_VIEWPORT = { width: 852, height: 393 };
+
+/**
  * Join the world and wait until the game is ready.
  *
  * The join happens at a desktop-sized viewport even when the test is about

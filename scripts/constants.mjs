@@ -30,3 +30,13 @@ export const SETTINGS = {
  * 768 is the conventional tablet breakpoint and matches an iPad in portrait.
  */
 export const TABLET_BREAKPOINT = 768;
+
+/**
+ * Viewport height (CSS pixels) also required for the tablet layout.
+ *
+ * Width alone is not enough to tell a tablet from a phone: an iPhone on its
+ * side is 852px wide, past the width breakpoint, on a screen with nothing like
+ * the room a tablet has. Both dimensions have to be checked, and this value
+ * must stay in step with the media query in phonedry.css.
+ */
+export const TABLET_MIN_HEIGHT = 600;

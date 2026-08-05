@@ -11,7 +11,7 @@
  * a device driven by a finger is also the kind of device with a memory ceiling.
  */
 
-import { TABLET_BREAKPOINT } from "./constants.mjs";
+import { TABLET_BREAKPOINT, TABLET_MIN_HEIGHT } from "./constants.mjs";
 import { getMode, MODE } from "./settings.mjs";
 
 /**
@@ -36,15 +36,20 @@ export function isTouchDevice() {
 }
 
 /**
- * Is the viewport wide enough for the tablet layout?
+ * Is the viewport big enough for the tablet layout?
  *
  * This drives layout only — it never decides whether the mobile client loads.
  * A phone and a tablet both get Phonedry; the tablet just gets more on screen.
  *
+ * Both dimensions are checked. Width alone calls an iPhone in landscape a
+ * tablet — it is 852px wide on its side — and hands it a layout meant for a
+ * screen four times the height.
+ *
  * @returns {boolean}
  */
 export function isTabletViewport() {
-  return window.innerWidth >= TABLET_BREAKPOINT;
+  return (window.innerWidth >= TABLET_BREAKPOINT)
+    && (window.innerHeight >= TABLET_MIN_HEIGHT);
 }
 
 /**

@@ -1,0 +1,11 @@
+{{!--
+  Shown only when a phone is held in landscape. Hidden entirely by default; the
+  stylesheet is what decides when it appears, because the decision is a media
+  query rather than anything the shell knows.
+
+  CONSTRAINT: exactly one top-level element. See the note in header.hbs.
+--}}
+<div class="phonedry-rotate" role="alert">
+  <div class="phonedry-rotate__icon" aria-hidden="true"></div>
+  <p class="phonedry-rotate__message">{{localize "PHONEDRY.Rotate.Message"}}</p>
+</div>
