@@ -417,17 +417,24 @@
  * columns would leave a ragged orphan on the second line.
  */
 /*
- * Six readouts across, on the narrowest phone.
+ * Seven across, on the narrowest phone.
  *
- * Adding hit dice took this from five to six, and at the old minimum the sixth
- * wrapped onto a row of its own — one lozenge stretched across the full width,
- * which reads as an error rather than as a layout. These are readouts rather
- * than targets, so they can go narrower than the touch floor without costing
- * anything.
+ * The minimum has been walked down twice for the same reason. Adding hit dice
+ * took the row from five to six, and adding inspiration took it to seven; each
+ * time, the new one wrapped onto a row of its own as a single lozenge stretched
+ * across the full width, which reads as an error rather than as a layout.
+ *
+ * 3rem is what fits seven at 361px of content with a 0.25rem gap, measured on
+ * an iPhone 15 rather than derived. Most of these are readouts rather than
+ * targets, so they can go narrower than the touch floor without costing
+ * anything; the two that are buttons opt back in below.
+ *
+ * A caster with exhaustion shows eight and will wrap. That is the honest
+ * trade — going narrow enough for eight leaves "Spell DC" wider than its chip.
  */
 .phonedry-active .phonedry-vitals {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(3.375rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(3rem, 1fr));
   gap: var(--phonedry-gap-sm);
   margin-top: var(--phonedry-gap-md);
 }
@@ -464,6 +471,37 @@
 }
 
 .phonedry-active .phonedry-vitals__item--warning { border-color: var(--phonedry-bad); }
+
+/*
+ * Inspiration is a button, but not one that is always worth looking at.
+ *
+ * The accent border every action chip gets would put it at the same weight as
+ * initiative on the majority of days when the character has none, so it stays
+ * quiet until it is held and then becomes the loudest thing in the row. A
+ * player who has inspiration must not be able to forget it — that is the whole
+ * failure this control exists to prevent.
+ */
+.phonedry-active .phonedry-inspiration {
+  border-color: var(--phonedry-border);
+}
+
+.phonedry-active .phonedry-inspiration .phonedry-vitals__value {
+  color: var(--phonedry-muted);
+  font-size: 0.9375rem;
+}
+
+.phonedry-active .phonedry-inspiration--held {
+  border-color: var(--phonedry-accent);
+  background: color-mix(in srgb, var(--phonedry-accent) 18%, var(--phonedry-bg));
+}
+
+.phonedry-active .phonedry-inspiration--held .phonedry-vitals__value {
+  color: var(--phonedry-accent);
+}
+
+.phonedry-active .phonedry-inspiration--held .phonedry-vitals__term {
+  color: var(--phonedry-text);
+}
 
 .phonedry-active .phonedry-vitals__term {
   font-size: 0.625rem;
@@ -1802,6 +1840,119 @@
    so the artwork and names line up down the whole group. */
 .phonedry-active .phonedry-section__heading--container .phonedry-item__equip {
   margin-left: -3px;
+}
+
+/* -------------------------------------------- */
+/*  Concentration                               */
+/* -------------------------------------------- */
+
+/*
+ * The one section on the status screen that is about something running out.
+ *
+ * Given a tinted border rather than the flat treatment the effects list gets,
+ * because it is only ever on screen while it applies — and while it applies it
+ * is the most time-sensitive thing on the sheet. A spell held through an hour
+ * of play after the damage that should have ended it is the failure this is
+ * here to prevent, and a quiet row would not prevent it.
+ */
+.phonedry-active .phonedry-concentration .phonedry-section__heading {
+  color: var(--phonedry-accent);
+}
+
+.phonedry-active .phonedry-concentrations {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.phonedry-active .phonedry-concentration__row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: var(--phonedry-gap-md);
+
+  padding: var(--phonedry-gap-sm);
+  border: 1px solid var(--phonedry-accent);
+  border-radius: 0.375rem;
+  background: color-mix(in srgb, var(--phonedry-accent) 10%, var(--phonedry-bg));
+}
+
+.phonedry-active .phonedry-concentration__row + .phonedry-concentration__row {
+  margin-top: var(--phonedry-gap-sm);
+}
+
+.phonedry-active .phonedry-concentration__icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  border-radius: 0.25rem;
+  object-fit: cover;
+}
+
+/* min-width: 0 is what lets the name shrink so the two controls on the right
+   are never pushed off the screen. */
+.phonedry-active .phonedry-concentration__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.phonedry-active .phonedry-concentration__name,
+.phonedry-active .phonedry-concentration__duration {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.phonedry-active .phonedry-concentration__duration {
+  font-size: 0.6875rem;
+  color: var(--phonedry-muted);
+}
+
+/* The reason to come to this screen at all, so it gets the filled treatment
+   rather than sharing the outline the dismiss control uses. */
+.phonedry-active .phonedry-concentration__save {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+
+  min-height: var(--phonedry-touch-target);
+  height: auto;
+  padding: 0 var(--phonedry-gap-md);
+
+  background: var(--phonedry-surface);
+  border: 1px solid var(--phonedry-accent);
+  border-radius: 0.375rem;
+  color: var(--phonedry-text);
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.phonedry-active .phonedry-concentration__bonus {
+  color: var(--phonedry-accent);
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: normal;
+}
+
+/* Deliberately the quieter of the two. Ending concentration is a real action,
+   but it is not the one being reached for under time pressure, and a player
+   fumbling for the save must not hit it by accident. */
+.phonedry-active .phonedry-concentration__end {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: var(--phonedry-touch-target);
+  min-height: var(--phonedry-touch-target);
+  height: auto;
+
+  background: transparent;
+  border: none;
+  color: var(--phonedry-muted);
 }
 
 /* -------------------------------------------- */

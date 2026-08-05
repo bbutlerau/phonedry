@@ -242,7 +242,15 @@ export function buildHeader(actor, config) {
     rests: buildRests(config),
 
     exhaustion: attributes.exhaustion || 0,
+
     inspiration: !!attributes.inspiration,
+
+    // The rule that defines it, so holding the chip says what inspiration is
+    // for — the same mechanism the skills and conditions lists use. dnd5e
+    // points at its own reference compendium, and the page is absent in a world
+    // without it installed, so this is null rather than a dead hold.
+    inspirationRule: config.rules?.inspiration ?? null,
+
     senses: buildSenses(attributes.senses, config)
   };
 }

@@ -9,7 +9,8 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  buildConditions, buildConditionsView, describeEffect, levelsFor
+  buildConcentration, buildConditions, buildConditionsView, CONCENTRATING,
+  describeEffect, levelsFor
 } from "../../scripts/data/conditions.mjs";
 
 /**
@@ -139,8 +140,110 @@ describe("describeEffect", () => {
 
 /* -------------------------------------------- */
 
+/**
+ * A concentration effect, as dnd5e marks one.
+ *
+ * The status is core's `specialStatusEffects.CONCENTRATING`, not an entry in
+ * dnd5e's `conditionTypes` — which is exactly why the effects list needs its
+ * own filter for this rather than the one that already drops conditions.
+ *
+ * @param {object} [overrides]
+ * @returns {object}
+ */
+function concentrationEffect({ itemId = "spell1", name = "Bless", duration = "1 minute" } = {}) {
+  return {
+    ...effect({ name, uuid: "Actor.a.ActiveEffect.conc", statuses: [CONCENTRATING], duration }),
+    getFlag: (scope, key) => ((scope === "dnd5e") && (key === "item")) ? { id: itemId } : undefined
+  };
+}
+
+describe("buildConcentration", () => {
+  it("names the spell rather than the effect, and takes its artwork", () => {
+    // The effect is named after the spell, but the spell is what carries the
+    // artwork and the description worth holding to read.
+    const view = buildConcentration(
+      [concentrationEffect({ itemId: "spell1", name: "Concentrating" })],
+      [{ id: "spell1", name: "Bless", img: "bless-spell.svg" }],
+      { concentration: { save: 3 } }
+    );
+
+    assert.equal(view.active, true);
+    assert.equal(view.entries[0].name, "Bless");
+    assert.equal(view.entries[0].img, "bless-spell.svg");
+    assert.equal(view.entries[0].itemId, "spell1");
+  });
+
+  it("writes the save with its sign, as a saving throw is written", () => {
+    // "+0" rather than "0": the sign is what says this is a modifier to a d20
+    // rather than a target number.
+    assert.equal(buildConcentration([], [], { concentration: { save: 3 } }).save, "+3");
+    assert.equal(buildConcentration([], [], { concentration: { save: 0 } }).save, "+0");
+    assert.equal(buildConcentration([], [], { concentration: { save: -1 } }).save, "-1");
+    assert.equal(buildConcentration([], [], {}).save, "+0");
+  });
+
+  it("falls back to the effect where the spell is gone", () => {
+    // A spell cast from a scroll leaves an effect whose item no longer exists.
+    // Losing the row entirely would be worse than losing its artwork.
+    const view = buildConcentration([concentrationEffect({ itemId: "missing" })], [], {});
+    assert.equal(view.entries[0].name, "Bless");
+    assert.equal(view.entries[0].itemId, null);
+  });
+
+  it("carries how long there is left to hold it", () => {
+    const view = buildConcentration([concentrationEffect({ duration: "10 rounds" })], [], {});
+    assert.equal(view.entries[0].duration, "10 rounds");
+
+    // Foundry leaves the label empty rather than null when there is none.
+    assert.equal(buildConcentration([concentrationEffect({ duration: "" })], [], {})
+      .entries[0].duration, null);
+  });
+
+  it("reports concentrating on nothing rather than throwing", () => {
+    const view = buildConcentration();
+    assert.equal(view.active, false);
+    assert.deepEqual(view.entries, []);
+  });
+});
+
+/* -------------------------------------------- */
+
 describe("buildConditionsView", () => {
   const actor = { statuses: new Set(["prone"]), system: { attributes: { exhaustion: 0 } } };
+
+  it("shows what is being concentrated on, and only once", () => {
+    /*
+     * The concentration effect is not in `CONFIG.DND5E.conditionTypes`, so the
+     * filter that drops condition effects does not catch it. Without a filter
+     * of its own the spell appears both in its own section and among the
+     * effects, under two different sets of controls.
+     */
+    const conc = concentrationEffect();
+    const view = buildConditionsView(actor, [conc, effect({ name: "Bane" })], CONFIG_DND5E, {
+      effects: new Set([conc]),
+      items: new Set([{ id: "spell1", name: "Bless", img: "bless.svg" }])
+    });
+
+    assert.equal(view.concentration.active, true);
+    assert.deepEqual(view.concentration.entries.map(e => e.name), ["Bless"]);
+    assert.deepEqual(view.applied.map(e => e.name), ["Bane"]);
+  });
+
+  it("counts concentration towards what is on the character", () => {
+    const conc = concentrationEffect();
+    const view = buildConditionsView(actor, [conc], CONFIG_DND5E, {
+      effects: new Set([conc]), items: new Set([])
+    });
+
+    // Prone from the actor's statuses, plus the concentration.
+    assert.equal(view.activeCount, 2);
+  });
+
+  it("reports no concentration when none was passed", () => {
+    const view = buildConditionsView(actor, [effect()], CONFIG_DND5E);
+    assert.equal(view.concentration.active, false);
+    assert.deepEqual(view.concentration.entries, []);
+  });
 
   it("keeps conditions and applied effects apart", () => {
     const view = buildConditionsView(actor, [effect({ name: "Bless" })], CONFIG_DND5E);

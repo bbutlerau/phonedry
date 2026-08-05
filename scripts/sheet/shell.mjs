@@ -18,7 +18,9 @@ import { buildSpellsView } from "../data/spells.mjs";
 import { buildActionsView } from "../data/actions.mjs";
 import { buildConditionsView } from "../data/conditions.mjs";
 import { buildInventoryView } from "../data/inventory.mjs";
-import { setCondition, setEffectDisabled, setExhaustion } from "../conditions.mjs";
+import {
+  endConcentration, setCondition, setEffectDisabled, setExhaustion, setInspiration
+} from "../conditions.mjs";
 import { setAttuned, setEquipped } from "../inventory.mjs";
 import { takeRest } from "../rest.mjs";
 import { useActivity } from "../actions.mjs";
@@ -31,7 +33,7 @@ import { addItem, getAvailableItems } from "../item-browser.mjs";
 import { searchItems, ITEM_SORTS } from "../data/item-browser.mjs";
 import {
   ROLL_MODE, rollAbilityCheck, rollSavingThrow, rollSkill,
-  rollDeathSave, rollInitiative, rollTypedCommand
+  rollConcentration, rollDeathSave, rollInitiative, rollTypedCommand
 } from "../rolls.mjs";
 import { applyDamage, applyHealing, applyTempHP, parseAmount } from "../hp.mjs";
 import { describeRoll, isOwnRoll, pushRoll } from "../data/roll-log.mjs";
@@ -72,6 +74,9 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       setTab: PhonedryShell.#onSetTab,
       stepExhaustion: PhonedryShell.#onStepExhaustion,
       toggleCondition: PhonedryShell.#onToggleCondition,
+      toggleInspiration: PhonedryShell.#onToggleInspiration,
+      rollConcentration: PhonedryShell.#onRollConcentration,
+      endConcentration: PhonedryShell.#onEndConcentration,
       toggleEffect: PhonedryShell.#onToggleEffect,
       stepHp: PhonedryShell.#onStepHp,
       toggleHpEditor: PhonedryShell.#onToggleHpEditor,
@@ -512,8 +517,14 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       // applying, and it reaches effects living on the character's items as
       // well as on the character — which is where a Rage or a Divine Order
       // actually lives. Collecting the generator here keeps the mapper pure.
+      // `actor.concentration` is dnd5e's own reckoning of what is being held
+      // on to, and it resolves the spell behind each effect — including one
+      // cast from a scroll that no longer exists. Collecting it here keeps the
+      // mapper pure.
       conditions: actor
-        ? buildConditionsView(actor, [...actor.allApplicableEffects()], CONFIG.DND5E)
+        ? buildConditionsView(
+          actor, [...actor.allApplicableEffects()], CONFIG.DND5E, actor.concentration
+        )
         : null,
       browser: this.#prepareBrowser(actor),
       describe: this.#describe,
@@ -1073,6 +1084,38 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   static #onToggleCondition(event, target) {
     if ( !this.actor ) return;
     setCondition(this.actor, target.dataset.condition, target.getAttribute("aria-pressed") !== "true");
+  }
+
+  /**
+   * Grant or spend inspiration.
+   *
+   * @this {PhonedryShell}
+   */
+  static #onToggleInspiration(event, target) {
+    if ( !this.actor ) return;
+    setInspiration(this.actor, target.getAttribute("aria-pressed") !== "true");
+  }
+
+  /**
+   * Roll to keep concentration.
+   *
+   * Uses the sheet's advantage selector like every other roll. dnd5e adds its
+   * own advantage on top where a feature grants it, so a War Caster is not
+   * quietly overridden by the header sitting on normal.
+   *
+   * @this {PhonedryShell}
+   */
+  static #onRollConcentration() {
+    if ( this.actor ) rollConcentration(this.actor, this.rollMode);
+  }
+
+  /**
+   * Stop concentrating.
+   *
+   * @this {PhonedryShell}
+   */
+  static #onEndConcentration(event, target) {
+    if ( this.actor ) endConcentration(this.actor, target.dataset.effectUuid);
   }
 
   /**

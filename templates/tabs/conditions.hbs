@@ -12,6 +12,60 @@
   A tab body, included by content.hbs. No wrapper and no single-root
   constraint; those belong to the part.
 --}}
+{{!-- Concentration first, and only when there is any.
+
+      This is the thing most often forgotten at a table: a spell quietly stays
+      running for an hour of play after the damage that should have ended it,
+      because nothing on the sheet ever mentions it again. So it goes at the top
+      of the screen, above eighteen conditions, rather than as one row among the
+      effects — where it appeared until now, named like everything else and
+      indistinguishable from a Bless someone else was maintaining.
+
+      Absent entirely when not concentrating. An empty "nothing" heading here
+      would push the conditions grid down a line for the majority of a session
+      to say something the player can already see. --}}
+{{#if conditions.concentration.active}}
+  <section class="phonedry-section phonedry-concentration">
+    <h2 class="phonedry-section__heading">{{localize "PHONEDRY.Conditions.Concentrating"}}</h2>
+
+    <ul class="phonedry-concentrations">
+      {{#each conditions.concentration.entries}}
+        <li class="phonedry-concentration__row">
+          <img class="phonedry-concentration__icon" src="{{this.img}}" alt="" />
+
+          {{!-- Holding reads the spell, as everywhere else — "what does the
+                thing I am holding on to actually do" is a fair question an hour
+                into maintaining it. --}}
+          <span class="phonedry-concentration__body"
+                {{#if this.itemId}}data-describe="{{this.itemId}}"{{/if}}>
+            <span class="phonedry-concentration__name">{{this.name}}</span>
+            {{#if this.duration}}
+              <span class="phonedry-concentration__duration">{{this.duration}}</span>
+            {{/if}}
+          </span>
+
+          {{!-- The save is the reason to come here at all, so it carries the
+                number rather than making the player go and find it. --}}
+          <button type="button" class="phonedry-concentration__save"
+                  data-action="rollConcentration">
+            {{localize "PHONEDRY.Conditions.Save"}}
+            <span class="phonedry-concentration__bonus">{{../conditions.concentration.save}}</span>
+          </button>
+
+          {{!-- Ending it is a real action rather than a tidy-up: a player who
+                drops concentration to cast something else has to be able to say
+                so, and dnd5e's own route is what tells the spell. --}}
+          <button type="button" class="phonedry-concentration__end"
+                  data-action="endConcentration" data-effect-uuid="{{this.uuid}}"
+                  aria-label="{{localize 'PHONEDRY.Conditions.EndAria' name=this.name}}">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+          </button>
+        </li>
+      {{/each}}
+    </ul>
+  </section>
+{{/if}}
+
 <section class="phonedry-section">
   <h2 class="phonedry-section__heading">{{localize "PHONEDRY.Conditions.Heading"}}</h2>
 

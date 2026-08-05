@@ -295,6 +295,30 @@ All notable changes to Phonedry are recorded here. Versions follow
   say about attunement. It is counted rather than enforced: dnd5e counts
   attunements and leaves the ruling to the table, and a sheet that refused the
   tap would be enforcing a rule the system does not, from a phone, mid-session.
+- Inspiration is a chip in the header, beside the other vitals and directly
+  above the advantage selector it is spent to gain. It toggles both ways rather
+  than only being spendable: a mis-tap on a phone would otherwise cost a player
+  their inspiration with no way back except asking the GM. Always shown, even
+  when not held — a chip that appeared only while inspired would make its own
+  absence unreadable.
+
+- Concentration is surfaced at the top of the status screen, with the save
+  bonus on the button that rolls it and a control to drop it. This is the thing
+  most often forgotten at a table: a spell quietly stays running for an hour of
+  play after the damage that should have ended it, because nothing on the sheet
+  ever mentions it again.
+
+  It previously appeared as one row among "Affecting you", named like
+  everything else and indistinguishable from a Bless someone else was
+  maintaining. It is now excluded from that list, so it appears exactly once.
+  dnd5e marks concentration through core's special status effects rather than
+  through its own condition types, so the filter that already drops conditions
+  from that list did not catch it.
+
+  Rolling the save does not end concentration either way — that is the GM's
+  call on the result, and a sheet that dropped it on the roll would be
+  inventing a rule.
+
 - Unit tests for the actor-to-view-model mappers. These need no Foundry, no
   browser and no world, so unlike the smoke tests they can run in CI.
 

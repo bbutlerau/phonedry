@@ -21,6 +21,8 @@
       "HitDice": "Hit dice",
       "HitPoints": "Hit points",
       "Initiative": "Init",
+      "Inspiration": "Insp",
+      "InspirationAria": "Inspiration. Tap to grant or spend it.",
       "Proficiency": "Prof",
       "RollDeathSave": "Roll death save",
       "SaveAria": "Roll a {ability} saving throw",
@@ -79,11 +81,14 @@
     "Conditions": {
       "Applied": "Affecting you",
       "AppliedNote": "Turning one off stops it applying to you. It does not end the spell for whoever cast it.",
+      "Concentrating": "Concentrating on",
+      "EndAria": "Stop concentrating on {name}",
       "Exhaustion": "the exhaustion level",
       "ExhaustionAria": "Exhaustion, level {level} of {max}. Tap to step up.",
       "Failed": "Phonedry could not change {what}. See the console for details.",
       "Heading": "Conditions",
       "NoneApplied": "Nothing is affecting you right now.",
+      "Save": "Save",
       "Suppressed": "not applying"
     },
     "Actions": {

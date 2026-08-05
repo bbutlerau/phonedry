@@ -294,11 +294,16 @@ Verify your own work as part of finishing a task rather than waiting to be told.
 No need to narrate every check. Say plainly if something didn't work or you're
 unsure.
 
-**Run the full suites before a commit, not after every change.** They take
-minutes, and Brad can check the same thing on his phone faster than Playwright
-can join a world. During a piece of work, run `npm run test:unit` — it is
-instant — and the one smoke test covering what changed. Save `npm test` and
-`npm run test:webkit` for the point where the work is about to be committed.
+**Do not run the full suites until a commit is actually being made.** This is a
+rule, not a preference — Brad has had to say it twice. `npm test`,
+`npm run test:webkit` and `npm run test:all` are for the moment the work is
+being committed and for nothing else. Not "before calling a milestone done",
+not to confirm a feature works, not after finishing a batch of edits.
+
+During a piece of work: `npm run test:unit`, which is instant, plus the single
+smoke spec covering what changed. That is the whole loop. The suites take
+minutes each and Brad can check the same thing on his phone faster than
+Playwright can join a world.
 
 ```bash
 npm test           # unit + Chromium smoke tests; ~2 minutes

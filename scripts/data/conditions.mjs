@@ -16,6 +16,20 @@
  */
 
 /**
+ * Render a bonus with an explicit sign, as a saving throw is written.
+ *
+ * `+0` rather than `0`, because the sign is what says this is a modifier to a
+ * d20 rather than a target number.
+ *
+ * @param {number} value
+ * @returns {string}
+ */
+function formatModifier(value) {
+  const n = Number(value) || 0;
+  return (n >= 0) ? `+${n}` : String(n);
+}
+
+/**
  * Conditions that carry a level rather than being on or off.
  *
  * Only exhaustion, but read from config rather than hard-coded, because dnd5e
@@ -108,14 +122,77 @@ export function describeEffect(effect) {
 /* -------------------------------------------- */
 
 /**
- * Build the whole conditions view model.
+ * The status id dnd5e marks a concentration effect with.
  *
- * @param {object} actor     An actor-shaped object.
- * @param {object[]} effects  Every effect applying to the actor.
- * @param {object} config    `CONFIG.DND5E`.
+ * Core's `CONFIG.specialStatusEffects.CONCENTRATING`, which is "concentrating"
+ * in every build so far. Named here rather than read from config because the
+ * mapper must stay free of Foundry globals to be unit-testable, and the caller
+ * has no more authority on the value than this does.
+ */
+export const CONCENTRATING = "concentrating";
+
+/**
+ * What the character is concentrating on.
+ *
+ * This is the thing most often forgotten at a table: a spell quietly stays
+ * running for an hour of play after the damage that should have ended it,
+ * because nothing on a sheet ever mentioned it again. So it gets its own
+ * section at the top of the screen rather than a row among the effects.
+ *
+ * dnd5e resolves the effects and their spells itself through
+ * `Actor#concentration`, which reaches an item even when the spell was cast
+ * from a scroll that no longer exists. Collecting that is the caller's job;
+ * shaping it is this one's.
+ *
+ * @param {object[]} effects   The concentration effects, from `actor.concentration`.
+ * @param {object[]} items     The spells being concentrated on.
+ * @param {object} attributes  The actor's `system.attributes`.
  * @returns {object}
  */
-export function buildConditionsView(actor, effects = [], config = {}) {
+export function buildConcentration(effects = [], items = [], attributes = {}) {
+  const spells = new Map(items.map(item => [item.id, item]));
+
+  return {
+    active: effects.length > 0,
+
+    // The save that keeps it. Shown beside the button rather than left to the
+    // chat card, because the question asked when damage lands is "what am I
+    // rolling", and it is the one number on this screen that is not obvious.
+    save: formatModifier(attributes.concentration?.save ?? 0),
+
+    entries: effects.map(effect => {
+      // The effect is named after the spell, but the spell is what carries the
+      // artwork and the description worth holding to read.
+      const spell = spells.get(effect.getFlag?.("dnd5e", "item")?.id)
+        ?? [...spells.values()][0]
+        ?? null;
+
+      return {
+        uuid: effect.uuid,
+        name: spell?.name ?? effect.name,
+        img: spell?.img ?? effect.img,
+        itemId: spell?.id ?? null,
+
+        // Foundry composes this — "1 minute", "10 rounds" — and how long there
+        // is left to hold it is the second question after what it is.
+        duration: effect.duration?.label || null
+      };
+    })
+  };
+}
+
+/* -------------------------------------------- */
+
+/**
+ * Build the whole conditions view model.
+ *
+ * @param {object} actor      An actor-shaped object.
+ * @param {object[]} effects  Every effect applying to the actor.
+ * @param {object} config     `CONFIG.DND5E`.
+ * @param {object} [concentration]  `actor.concentration`, as dnd5e resolves it.
+ * @returns {object}
+ */
+export function buildConditionsView(actor, effects = [], config = {}, concentration = {}) {
   const statuses = actor.statuses ?? new Set();
   const conditions = buildConditions(config, statuses, actor.system ?? {});
 
@@ -129,6 +206,16 @@ export function buildConditionsView(actor, effects = [], config = {}) {
 
   const applied = effects
     .filter(effect => ![...(effect.statuses ?? [])].some(s => conditionIds.has(s)))
+
+    /*
+     * Concentration gets its own section above, so its effect is dropped here
+     * for the same reason the conditions are. It is not in
+     * `CONFIG.DND5E.conditionTypes` — dnd5e marks it through core's special
+     * status effects instead — so the filter above does not catch it, and
+     * without this the spell being concentrated on appears twice under two
+     * different sets of controls.
+     */
+    .filter(effect => !(effect.statuses ?? new Set()).has?.(CONCENTRATING))
     .map(describeEffect)
 
     // Only the temporary ones. Passive effects are a character's permanent
@@ -139,14 +226,22 @@ export function buildConditionsView(actor, effects = [], config = {}) {
     .filter(effect => effect.temporary)
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  const concentrating = buildConcentration(
+    [...(concentration.effects ?? [])],
+    [...(concentration.items ?? [])],
+    actor.system?.attributes ?? {}
+  );
+
   return {
     conditions,
     applied,
+    concentration: concentrating,
 
     // Counted for the tab badge: whether anything is on you at all is the
     // question this screen exists to answer, and it should be answerable
     // without opening it.
-    activeCount: conditions.filter(c => c.active).length + applied.filter(e => !e.disabled).length,
+    activeCount: conditions.filter(c => c.active).length + applied.filter(e => !e.disabled).length
+      + concentrating.entries.length,
 
     noneApplied: applied.length === 0
   };

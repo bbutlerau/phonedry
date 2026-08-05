@@ -154,6 +154,35 @@
         </div>
       {{/if}}
 
+      {{!-- Inspiration sits with the vitals rather than on the status screen,
+            because the moment it is spent is the moment before a roll — and
+            the advantage selector it is spent to gain is directly below. A
+            control rather than a readout, and one that toggles both ways: a
+            mis-tap on a phone would otherwise cost a player their inspiration
+            with no way back except asking the GM.
+
+            Always shown, including when it is not held. A chip that appeared
+            only while inspired would make its own absence unreadable — you
+            could not tell "you have none" from "this sheet does not show
+            it". --}}
+      <button type="button"
+              class="phonedry-vitals__item phonedry-vitals__item--action phonedry-inspiration {{#if stats.header.inspiration}}phonedry-inspiration--held{{/if}}"
+              data-action="toggleInspiration"
+              aria-pressed="{{#if stats.header.inspiration}}true{{else}}false{{/if}}"
+              {{!-- The visible label is abbreviated to fit a chip a seventh of
+                    a phone wide, and a star means nothing read aloud. --}}
+              aria-label="{{localize 'PHONEDRY.Sheet.InspirationAria'}}"
+              {{#if stats.header.inspirationRule}}data-describe-uuid="{{stats.header.inspirationRule}}"{{/if}}>
+        <span class="phonedry-vitals__term">{{localize "PHONEDRY.Sheet.Inspiration"}}</span>
+        <span class="phonedry-vitals__value">
+          {{#if stats.header.inspiration}}
+            <i class="fa-solid fa-star" aria-hidden="true"></i>
+          {{else}}
+            <i class="fa-regular fa-star" aria-hidden="true"></i>
+          {{/if}}
+        </span>
+      </button>
+
       {{#if stats.header.exhaustion}}
         <div class="phonedry-vitals__item phonedry-vitals__item--warning">
           <span class="phonedry-vitals__term">{{localize "PHONEDRY.Sheet.Exhaustion"}}</span>

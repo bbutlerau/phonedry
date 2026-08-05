@@ -149,6 +149,27 @@ export function rollDeathSave(actor, mode = ROLL_MODE.NORMAL) {
 }
 
 /**
+ * Roll a concentration saving throw.
+ *
+ * dnd5e keeps its own advantage state for this in
+ * `system.attributes.concentration.roll.mode`, which is how features like a
+ * War Caster's advantage on concentration reach the roll. The sheet's mode is
+ * still passed, because a player under an effect the system does not know
+ * about needs the same control they have everywhere else — dnd5e merges what
+ * is handed in over its own defaults, so its bonuses survive either way.
+ *
+ * @param {Actor} actor
+ * @param {string} [mode]
+ * @returns {Promise<object[]|null>}
+ */
+export function rollConcentration(actor, mode = ROLL_MODE.NORMAL) {
+  return attempt(
+    () => actor.rollConcentration({ ...modeFlags(mode) }, NO_DIALOG),
+    "the concentration save"
+  );
+}
+
+/**
  * Roll initiative, without dnd5e's configuration dialog.
  *
  * That dialog was kept at first on the belief that `rollInitiativeDialog` was
