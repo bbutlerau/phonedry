@@ -59,9 +59,14 @@ test.describe("phonedry boot path", () => {
     expect(state.shellPresent).toBe(true);
     expect(state.pixiApplication).toBe(false);
 
-    // A tablet is still a phone client with more room, not a different mode.
-    const shellText = await page.locator("#phonedry-shell").innerText();
-    expect(shellText).toContain("tablet");
+    // A tablet is still a phone client with more room, not a different mode:
+    // the difference is entirely in how many columns the layout uses. Reading
+    // the resolved grid is the only way to prove the media query applied —
+    // asserting on the viewport would only restate what the test set up.
+    const columns = await page.locator(".phonedry-abilities").evaluate(
+      el => getComputedStyle(el).gridTemplateColumns.split(" ").length
+    );
+    expect(columns, "abilities did not expand to the tablet layout").toBe(6);
 
     await context.close();
   });

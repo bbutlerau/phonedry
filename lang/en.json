@@ -1,5 +1,7 @@
 {
   "PHONEDRY": {
+    "Title": "Phonedry",
+
     "Settings": {
       "Mode": {
         "Name": "Mobile client",
@@ -8,6 +10,41 @@
         "Always": "Always on",
         "Never": "Never"
       }
+    },
+
+    "Sheet": {
+      "Abilities": "Abilities",
+      "ArmourClass": "AC",
+      "CheckAria": "Roll a {ability} check",
+      "DeathSave": "Death save",
+      "DeathSaves": "Death saves",
+      "Exhaustion": "Exhaustion",
+      "Failures": "Failures",
+      "HitPoints": "Hit points",
+      "HoldHint": "Tap to roll. Hold for advantage or disadvantage.",
+      "Initiative": "Init",
+      "Proficiency": "Prof",
+      "RollDeathSave": "Roll death save",
+      "SaveAria": "Roll a {ability} saving throw",
+      "SaveShort": "Save",
+      "Skills": "Skills",
+      "Speed": "Speed",
+      "SpellSave": "Spell DC",
+      "Successes": "Successes"
+    },
+
+    "Rolls": {
+      "Advantage": "Advantage",
+      "Disadvantage": "Disadvantage",
+      "Normal": "Roll",
+      "Failed": "Phonedry could not roll {what}. See the console for details."
+    },
+
+    "Empty": {
+      "Heading": "No character to show",
+      "None": "No character is assigned to {user}, and you do not own one in this world. Ask your GM to assign you a character.",
+      "Ambiguous": "You own more than one character and none has been assigned to you, so Phonedry does not know which to show. Ask your GM to assign one of these:",
+      "Escape": "Open the full tabletop instead"
     }
   }
 }

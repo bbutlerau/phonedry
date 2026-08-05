@@ -123,18 +123,26 @@ Verify your own work as part of finishing a task rather than waiting to be told.
 No need to narrate every check. Say plainly if something didn't work or you're
 unsure.
 
-Run the boot smoke tests before calling a milestone done:
+Run the tests before calling a milestone done:
 
 ```bash
-npm test          # requires the Docker Foundry to be running
+npm test          # both suites; the e2e half needs the Docker Foundry running
+npm run test:unit # mappers only — no Foundry, no browser, fast
+npm run test:e2e  # smoke tests against the live instance
 ```
 
-These drive the real Foundry instance rather than a mock, deliberately: every
-bug so far has come from core behaving differently than expected, and a mocked
-Foundry would faithfully reproduce our own assumptions and catch none of them.
-They cannot run in CI, because Foundry needs a licence and a world. The mapper
-unit tests planned for M2 are the part that will run in CI, being pure
-functions with no Foundry attached.
+The unit tests cover the actor → view model mappers, use Node's built-in test
+runner rather than a framework, and are the part that can run in CI.
+
+The smoke tests drive the real Foundry instance rather than a mock,
+deliberately: every bug so far has come from core behaving differently than
+expected, and a mocked Foundry would faithfully reproduce our own assumptions
+and catch none of them. They cannot run in CI, because Foundry needs a licence
+and a world.
+
+They join as the player `phonedrt`, who has the level 7 cleric "phonedry test"
+assigned. Override with `PHONEDRY_TEST_USER`. Joining as a GM with no assigned
+character only ever exercises the empty state.
 
 A test that passes alone but fails in the suite is usually persisted client
 state leaking between contexts — `core.noCanvas` in particular survives a page

@@ -1,0 +1,81 @@
+{{!--
+  The persistent header: who this is, and the numbers a player checks
+  constantly enough that they must never be behind a scroll.
+
+  CONSTRAINT: this template must render EXACTLY ONE top-level element. Core's
+  #parsePartHTML throws otherwise, and because Phonedry has already disabled the
+  canvas by the time a part renders, that throw presents as a blank screen with
+  no visible error rather than as an exception anyone will see.
+--}}
+<header class="phonedry-header">
+
+  {{#if stats}}
+    <div class="phonedry-header__identity">
+      {{#if stats.header.img}}
+        <img class="phonedry-header__portrait" src="{{stats.header.img}}" alt="" />
+      {{/if}}
+      <div class="phonedry-header__names">
+        <h1 class="phonedry-header__name">{{stats.header.name}}</h1>
+        <p class="phonedry-header__subtitle">
+          {{#if stats.header.race}}{{stats.header.race}}{{/if}}
+          {{#if stats.header.classes}}{{stats.header.classes}}{{/if}}
+        </p>
+      </div>
+    </div>
+
+    {{!-- Hit points get the full width and a bar: it is the only number here
+          that changes every round, and the one people read at a glance. --}}
+    <div class="phonedry-hp {{#if stats.header.hp.unconscious}}phonedry-hp--down{{else if stats.header.hp.bloodied}}phonedry-hp--bloodied{{/if}}">
+      <div class="phonedry-hp__bar" style="--phonedry-hp-pct: {{stats.header.hp.pct}}%"></div>
+      <div class="phonedry-hp__text">
+        <span class="phonedry-hp__label">{{localize "PHONEDRY.Sheet.HitPoints"}}</span>
+        <span class="phonedry-hp__value">
+          {{stats.header.hp.value}}<span class="phonedry-hp__sep">/</span>{{stats.header.hp.max}}
+          {{#if stats.header.hp.temp}}<span class="phonedry-hp__temp">+{{stats.header.hp.temp}}</span>{{/if}}
+        </span>
+      </div>
+    </div>
+
+    {{!-- Divs rather than a definition list, because one of these is a button
+          and <dl> permits only dt, dd and div as children. --}}
+    <div class="phonedry-vitals">
+      <div class="phonedry-vitals__item">
+        <span class="phonedry-vitals__term">{{localize "PHONEDRY.Sheet.ArmourClass"}}</span>
+        <span class="phonedry-vitals__value">{{stats.header.ac}}</span>
+      </div>
+
+      <button type="button" class="phonedry-vitals__item phonedry-vitals__item--action"
+              data-action="rollInitiative">
+        <span class="phonedry-vitals__term">{{localize "PHONEDRY.Sheet.Initiative"}}</span>
+        <span class="phonedry-vitals__value">{{stats.header.initiative}}</span>
+      </button>
+
+      <div class="phonedry-vitals__item">
+        <span class="phonedry-vitals__term">{{localize "PHONEDRY.Sheet.Speed"}}</span>
+        <span class="phonedry-vitals__value">{{stats.header.speed}}<span class="phonedry-vitals__unit">{{stats.header.speedUnits}}</span></span>
+      </div>
+
+      <div class="phonedry-vitals__item">
+        <span class="phonedry-vitals__term">{{localize "PHONEDRY.Sheet.Proficiency"}}</span>
+        <span class="phonedry-vitals__value">{{stats.header.proficiency}}</span>
+      </div>
+
+      {{#if stats.header.spellDc}}
+        <div class="phonedry-vitals__item">
+          <span class="phonedry-vitals__term">{{localize "PHONEDRY.Sheet.SpellSave"}}</span>
+          <span class="phonedry-vitals__value">{{stats.header.spellDc}}</span>
+        </div>
+      {{/if}}
+
+      {{#if stats.header.exhaustion}}
+        <div class="phonedry-vitals__item phonedry-vitals__item--warning">
+          <span class="phonedry-vitals__term">{{localize "PHONEDRY.Sheet.Exhaustion"}}</span>
+          <span class="phonedry-vitals__value">{{stats.header.exhaustion}}</span>
+        </div>
+      {{/if}}
+    </div>
+  {{else}}
+    <h1 class="phonedry-header__name">{{localize "PHONEDRY.Title"}}</h1>
+  {{/if}}
+
+</header>

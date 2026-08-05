@@ -2,8 +2,15 @@
  * Helpers for driving a live Foundry instance from Playwright.
  */
 
-/** The Foundry user the tests join as. Override with PHONEDRY_TEST_USER. */
-export const TEST_USER = process.env.PHONEDRY_TEST_USER ?? "Gamemaster";
+/**
+ * The Foundry user the tests join as. Override with PHONEDRY_TEST_USER.
+ *
+ * A player rather than the GM, and with a character assigned: the sheet is the
+ * thing under test, and a GM with no assigned character exercises only the
+ * empty state. This is also the more honest simulation — Phonedry is aimed at
+ * players, and a player's permissions are the narrower set.
+ */
+export const TEST_USER = process.env.PHONEDRY_TEST_USER ?? "phonedrt";
 
 /** An iPhone 15 viewport, in CSS pixels. */
 export const PHONE_VIEWPORT = { width: 393, height: 852 };

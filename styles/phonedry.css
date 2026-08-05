@@ -26,11 +26,19 @@
 
   --phonedry-bg: #16161a;
   --phonedry-surface: #23232b;
+
+  /* Used only for the pressed state. It has to read as "something happened"
+     under a finger in a lit room, so it is a clear step lighter than the
+     surface rather than a subtle tint. */
+  --phonedry-surface-raised: #34343f;
+
+  --phonedry-border: #3a3a44;
   --phonedry-text: #e8e6e3;
   --phonedry-muted: #9a978f;
   --phonedry-accent: #c9a227;
   --phonedry-ok: #6bbf59;
   --phonedry-bad: #d9534f;
+  --phonedry-info: #5bc0de;
 
   background: var(--phonedry-bg);
   color: var(--phonedry-text);
@@ -75,25 +83,21 @@
 /*  Shell                                       */
 /* -------------------------------------------- */
 
+/*
+ * The shell itself never scrolls — the content pane inside it does.
+ *
+ * That split is what pins the header in place. Hit points and armour class are
+ * consulted constantly during a fight, and a header that scrolled away would
+ * mean a trip back to the top of an eighteen-row skill list to answer "how much
+ * have I got left?".
+ */
 .phonedry-active .phonedry-shell {
   position: fixed;
   inset: 0;
 
-  /* Padding rather than inset offsets, so a scrolling child can still run
-     edge to edge behind the insets instead of leaving dead bands of colour. */
-  padding:
-    calc(var(--phonedry-safe-top) + var(--phonedry-gap-lg))
-    calc(var(--phonedry-safe-right) + var(--phonedry-gap-lg))
-    calc(var(--phonedry-safe-bottom) + var(--phonedry-gap-lg))
-    calc(var(--phonedry-safe-left) + var(--phonedry-gap-lg));
-
   display: flex;
   flex-direction: column;
-  gap: var(--phonedry-gap-lg);
-  overflow-y: auto;
-
-  /* Momentum scrolling without the page-level bounce. */
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
 
   background: var(--phonedry-bg);
   color: var(--phonedry-text);
@@ -101,64 +105,533 @@
   line-height: 1.4;
 }
 
-.phonedry-active .phonedry-shell__header h1 {
+/*
+ * Anything tappable, in one rule.
+ *
+ * Every one of these is a target for a finger during combat, so they share a
+ * minimum height and the touch behaviours that stop the OS interfering:
+ * `touch-action: manipulation` removes the 300ms double-tap-to-zoom delay,
+ * and suppressing the tap highlight avoids a grey flash competing with our own
+ * press state.
+ */
+.phonedry-active .phonedry-shell button,
+.phonedry-active .phonedry-shell [data-roll] {
+  min-height: var(--phonedry-touch-target);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* The press state, applied by the gesture layer while a finger is down. It is
+   deliberately instant: any transition makes a quick tap feel unacknowledged. */
+.phonedry-active .phonedry-pressing {
+  background: var(--phonedry-surface-raised) !important;
+}
+
+/* -------------------------------------------- */
+/*  Header                                      */
+/* -------------------------------------------- */
+
+.phonedry-active .phonedry-header {
+  flex: none;
+  padding:
+    calc(var(--phonedry-safe-top) + var(--phonedry-gap-md))
+    calc(var(--phonedry-safe-right) + var(--phonedry-gap-lg))
+    var(--phonedry-gap-md)
+    calc(var(--phonedry-safe-left) + var(--phonedry-gap-lg));
+
+  background: var(--phonedry-surface);
+  border-bottom: 1px solid var(--phonedry-border);
+}
+
+.phonedry-active .phonedry-header__identity {
+  display: flex;
+  align-items: center;
+  gap: var(--phonedry-gap-md);
+}
+
+.phonedry-active .phonedry-header__portrait {
+  width: 3rem;
+  height: 3rem;
+  flex: none;
+  border: 1px solid var(--phonedry-border);
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.phonedry-active .phonedry-header__names {
+  min-width: 0;
+}
+
+.phonedry-active .phonedry-header__name {
   margin: 0;
-  font-size: 1.5rem;
-  color: var(--phonedry-accent);
   border: none;
-}
-
-.phonedry-active .phonedry-shell__actor {
-  margin: var(--phonedry-gap-sm) 0 0;
   font-size: 1.25rem;
+  line-height: 1.2;
+  color: var(--phonedry-text);
+
+  /* Character names are long and unpredictable, and wrapping one onto a second
+     line would push the vitals below the fold on a small phone. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.phonedry-active .phonedry-shell__actor--none {
+.phonedry-active .phonedry-header__subtitle {
+  margin: 0;
+  font-size: 0.8125rem;
   color: var(--phonedry-muted);
+}
+
+/* -------------------------------------------- */
+/*  Hit points                                  */
+/* -------------------------------------------- */
+
+.phonedry-active .phonedry-hp {
+  position: relative;
+  margin-top: var(--phonedry-gap-md);
+  border: 1px solid var(--phonedry-border);
+  border-radius: 0.375rem;
+  overflow: hidden;
+  background: var(--phonedry-bg);
+}
+
+/* The bar is a sibling behind the text rather than a background on it, so the
+   numbers keep full contrast wherever the fill happens to end. */
+.phonedry-active .phonedry-hp__bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--phonedry-hp-pct, 0%);
+  background: var(--phonedry-ok);
+  opacity: 0.35;
+  transition: width 200ms ease-out;
+}
+
+.phonedry-active .phonedry-hp--bloodied .phonedry-hp__bar { background: var(--phonedry-accent); }
+.phonedry-active .phonedry-hp--down .phonedry-hp__bar { background: var(--phonedry-bad); opacity: 0.5; }
+
+.phonedry-active .phonedry-hp__text {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: var(--phonedry-gap-sm) var(--phonedry-gap-md);
+}
+
+.phonedry-active .phonedry-hp__label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--phonedry-muted);
+}
+
+.phonedry-active .phonedry-hp__value {
+  font-size: 1.125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.phonedry-active .phonedry-hp__sep { color: var(--phonedry-muted); margin: 0 0.1em; }
+.phonedry-active .phonedry-hp__temp { color: var(--phonedry-info); margin-left: 0.35em; }
+
+/* -------------------------------------------- */
+/*  Vitals                                      */
+/* -------------------------------------------- */
+
+/*
+ * Auto-fit rather than a fixed column count: the row holds four entries for a
+ * fighter and five or six for a caster with exhaustion, and hard-coding three
+ * columns would leave a ragged orphan on the second line.
+ */
+.phonedry-active .phonedry-vitals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(4.25rem, 1fr));
+  gap: var(--phonedry-gap-sm);
+  margin-top: var(--phonedry-gap-md);
+}
+
+.phonedry-active .phonedry-vitals__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+
+  padding: var(--phonedry-gap-sm);
+  background: var(--phonedry-bg);
+  border: 1px solid var(--phonedry-border);
+  border-radius: 0.375rem;
+  text-align: center;
+
+  /* Vitals are readouts, not targets, so they are exempt from the tap-target
+     floor that the button rule imposes. The one that IS a button opts back in
+     below. */
+  min-height: 0;
+}
+
+.phonedry-active .phonedry-vitals__item--action {
+  min-height: var(--phonedry-touch-target);
+  border-color: var(--phonedry-accent);
+}
+
+.phonedry-active .phonedry-vitals__item--warning { border-color: var(--phonedry-bad); }
+
+.phonedry-active .phonedry-vitals__term {
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--phonedry-muted);
+  white-space: nowrap;
+}
+
+.phonedry-active .phonedry-vitals__value {
+  font-size: 1.0625rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.phonedry-active .phonedry-vitals__unit {
+  font-size: 0.625rem;
+  color: var(--phonedry-muted);
+  margin-left: 0.15em;
+}
+
+/* -------------------------------------------- */
+/*  Content                                     */
+/* -------------------------------------------- */
+
+.phonedry-active .phonedry-content {
+  flex: 1;
+  overflow-y: auto;
+
+  /* Momentum scrolling without the page-level bounce. */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+
+  padding:
+    var(--phonedry-gap-md)
+    calc(var(--phonedry-safe-right) + var(--phonedry-gap-lg))
+    calc(var(--phonedry-safe-bottom) + var(--phonedry-gap-lg))
+    calc(var(--phonedry-safe-left) + var(--phonedry-gap-lg));
+}
+
+.phonedry-active .phonedry-section { margin-bottom: var(--phonedry-gap-lg); }
+
+.phonedry-active .phonedry-section__heading {
+  margin: 0 0 var(--phonedry-gap-sm);
+  border: none;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--phonedry-muted);
+}
+
+.phonedry-active .phonedry-section__note {
+  margin: var(--phonedry-gap-sm) 0 0;
+  font-size: 0.75rem;
+  color: var(--phonedry-muted);
+  text-align: center;
+}
+
+/* -------------------------------------------- */
+/*  Abilities                                   */
+/* -------------------------------------------- */
+
+.phonedry-active .phonedry-abilities {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--phonedry-gap-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.phonedry-active .phonedry-ability {
+  display: grid;
+  grid-template-areas:
+    "label score"
+    "check save";
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+
+  background: var(--phonedry-surface);
+  border: 1px solid var(--phonedry-border);
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+
+.phonedry-active .phonedry-ability__label {
+  grid-area: label;
+  padding-left: var(--phonedry-gap-sm);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--phonedry-muted);
+}
+
+.phonedry-active .phonedry-ability__score {
+  grid-area: score;
+  padding-right: var(--phonedry-gap-sm);
+  text-align: right;
+  font-size: 0.75rem;
+  color: var(--phonedry-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * The check modifier is the big number, because it is what a player is looking
+ * for when they glance at an ability block. The save sits beside it, smaller
+ * but still a full-size tap target — two distinct rolls, two distinct targets,
+ * which is the phone equivalent of dnd5e's separate desktop controls.
+ */
+.phonedry-active .phonedry-ability__check {
+  grid-area: check;
+  border: none;
+  background: transparent;
+  font-size: 1.375rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.phonedry-active .phonedry-ability__save {
+  grid-area: save;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.05rem;
+
+  border: none;
+  border-left: 1px solid var(--phonedry-border);
+  background: transparent;
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.phonedry-active .phonedry-ability__save-term {
+  font-size: 0.5625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--phonedry-muted);
+}
+
+/* -------------------------------------------- */
+/*  Skills                                      */
+/* -------------------------------------------- */
+
+.phonedry-active .phonedry-skills {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.phonedry-active .phonedry-skill {
+  display: grid;
+  grid-template-columns: 0.85rem 1fr auto 2.5rem 2rem;
+  align-items: center;
+  gap: var(--phonedry-gap-md);
+
+  width: 100%;
+  padding: 0 var(--phonedry-gap-md);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--phonedry-border);
+  text-align: left;
+}
+
+.phonedry-active .phonedry-skill__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.phonedry-active .phonedry-skill__ability {
+  font-size: 0.625rem;
+  letter-spacing: 0.06em;
+  color: var(--phonedry-muted);
+}
+
+.phonedry-active .phonedry-skill__mod {
+  text-align: right;
+  font-size: 1.0625rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Passive score, dimmed: useful to have, never the reason you tapped. */
+.phonedry-active .phonedry-skill__passive {
+  text-align: right;
+  font-size: 0.75rem;
+  color: var(--phonedry-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* -------------------------------------------- */
+/*  Proficiency pips                            */
+/* -------------------------------------------- */
+
+/*
+ * One shape, four states. dnd5e stores proficiency as a multiplier because half
+ * proficiency and expertise both exist, so a checkbox would be a lie for two of
+ * the four cases.
+ */
+.phonedry-active .phonedry-pip {
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  border: 1px solid var(--phonedry-muted);
+  border-radius: 50%;
+}
+
+.phonedry-active .phonedry-prof--proficient {
+  background: var(--phonedry-accent);
+  border-color: var(--phonedry-accent);
+}
+
+/* Half proficiency: filled on one side only. */
+.phonedry-active .phonedry-prof--half {
+  background: linear-gradient(to right, var(--phonedry-accent) 50%, transparent 50%);
+  border-color: var(--phonedry-accent);
+}
+
+.phonedry-active .phonedry-prof--expertise {
+  background: var(--phonedry-accent);
+  border-color: var(--phonedry-accent);
+  box-shadow: 0 0 0 2px var(--phonedry-bg), 0 0 0 3px var(--phonedry-accent);
+}
+
+/* The ability save button carries a proficiency class too, where it tints the
+   border rather than filling a pip — there is no pip element to fill. */
+.phonedry-active .phonedry-ability__save.phonedry-prof--proficient,
+.phonedry-active .phonedry-ability__save.phonedry-prof--expertise,
+.phonedry-active .phonedry-ability__save.phonedry-prof--half {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.phonedry-active .phonedry-ability__save.phonedry-prof--proficient .phonedry-ability__save-term,
+.phonedry-active .phonedry-ability__save.phonedry-prof--expertise .phonedry-ability__save-term {
+  color: var(--phonedry-accent);
+}
+
+/* -------------------------------------------- */
+/*  Death saves                                 */
+/* -------------------------------------------- */
+
+.phonedry-active .phonedry-death {
+  margin-bottom: var(--phonedry-gap-lg);
+  padding: var(--phonedry-gap-md);
+  background: var(--phonedry-surface);
+  border: 1px solid var(--phonedry-bad);
+  border-radius: 0.375rem;
+}
+
+.phonedry-active .phonedry-death__pips {
+  display: flex;
+  align-items: center;
+  gap: var(--phonedry-gap-sm);
+  margin-bottom: var(--phonedry-gap-sm);
+}
+
+.phonedry-active .phonedry-death__label {
+  flex: 1;
+  font-size: 0.8125rem;
+  color: var(--phonedry-muted);
+}
+
+.phonedry-active .phonedry-pip--filled.phonedry-pip--success {
+  background: var(--phonedry-ok);
+  border-color: var(--phonedry-ok);
+}
+
+.phonedry-active .phonedry-pip--filled.phonedry-pip--failure {
+  background: var(--phonedry-bad);
+  border-color: var(--phonedry-bad);
+}
+
+.phonedry-active .phonedry-death__roll {
+  width: 100%;
+  margin-top: var(--phonedry-gap-sm);
+  background: var(--phonedry-bg);
+  border: 1px solid var(--phonedry-bad);
+  border-radius: 0.375rem;
+}
+
+/* -------------------------------------------- */
+/*  Empty state                                 */
+/* -------------------------------------------- */
+
+.phonedry-active .phonedry-empty {
+  padding: var(--phonedry-gap-lg);
+  text-align: center;
+  color: var(--phonedry-muted);
+}
+
+.phonedry-active .phonedry-empty h2 {
+  border: none;
+  color: var(--phonedry-text);
+}
+
+.phonedry-active .phonedry-empty__candidates {
+  list-style: none;
+  padding: 0;
+  color: var(--phonedry-text);
+}
+
+.phonedry-active .phonedry-empty__escape a {
+  display: inline-block;
+  min-height: var(--phonedry-touch-target);
+  padding: var(--phonedry-gap-md) var(--phonedry-gap-lg);
+  color: var(--phonedry-accent);
+}
+
+/* -------------------------------------------- */
+/*  Roll mode dialog                            */
+/* -------------------------------------------- */
+
+/*
+ * Core's DialogV2 is desktop-shaped by default: buttons in a tight row, sized
+ * for a mouse. Stacking them full width turns three cramped targets into three
+ * unmissable ones, which matters because this dialog only ever appears as the
+ * result of a deliberate long press mid-combat.
+ */
+.phonedry-active .phonedry-roll-mode .form-footer {
+  flex-direction: column;
+  gap: var(--phonedry-gap-md);
+}
+
+.phonedry-active .phonedry-roll-mode button {
+  width: 100%;
+  min-height: var(--phonedry-touch-target);
   font-size: 1rem;
 }
 
-.phonedry-active .phonedry-shell__actor-detail {
-  margin: 0;
-  color: var(--phonedry-muted);
-}
-
-.phonedry-active .phonedry-shell__diagnostics {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--phonedry-gap-sm) var(--phonedry-gap-lg);
-  margin: 0;
-  padding: var(--phonedry-gap-lg);
-  background: var(--phonedry-surface);
-  border-radius: 0.5rem;
-}
-
-.phonedry-active .phonedry-shell__diagnostics dt {
-  color: var(--phonedry-muted);
-}
-
-.phonedry-active .phonedry-shell__diagnostics dd {
-  margin: 0;
-}
-
-.phonedry-active .phonedry-ok { color: var(--phonedry-ok); }
-.phonedry-active .phonedry-bad { color: var(--phonedry-bad); font-weight: bold; }
+.phonedry-active .phonedry-roll-mode__advantage { border-color: var(--phonedry-ok); }
+.phonedry-active .phonedry-roll-mode__disadvantage { border-color: var(--phonedry-bad); }
 
 /* -------------------------------------------- */
 /*  Tablet                                      */
 /* -------------------------------------------- */
 
 /*
- * Tablets get more on screen rather than different features. For now that only
- * means the shell stops stretching diagnostics across a very wide viewport;
- * from M2 this is where the two-column stats rail lives.
+ * Tablets get more on screen rather than different features. The extra width
+ * goes to laying the abilities out in a single row of six — the arrangement a
+ * paper sheet uses — and to splitting the skills into two columns so the whole
+ * list fits without scrolling.
  */
 @media (min-width: 768px) {
-  .phonedry-active .phonedry-shell {
-    align-items: start;
+  .phonedry-active .phonedry-abilities {
+    grid-template-columns: repeat(6, 1fr);
   }
 
-  .phonedry-active .phonedry-shell__diagnostics {
-    max-width: 32rem;
+  .phonedry-active .phonedry-skills {
+    columns: 2;
+    column-gap: var(--phonedry-gap-lg);
+  }
+
+  /* Without this a row can be split across the column break, leaving its
+     modifier stranded at the top of the second column. */
+  .phonedry-active .phonedry-skills li {
+    break-inside: avoid;
   }
 }

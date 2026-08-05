@@ -29,6 +29,31 @@ All notable changes to Phonedry are recorded here. Versions follow
 - Playwright boot smoke tests covering activation on touch devices, the tablet
   layout, non-activation on desktop, and the `?phonedry=off` escape hatch.
 
+- Stats screen: hit points with a bar, armour class, initiative, speed,
+  proficiency bonus, spell save DC and exhaustion in a header that stays put
+  while the sheet scrolls, followed by the six abilities and the full skill
+  list. Skills are sorted alphabetically rather than by dnd5e's key order,
+  which is the only order that can be navigated on a phone.
+- Rolling: every ability check, saving throw and skill check is a tap, and each
+  delegates to dnd5e's own API so chat cards, active effects and third-party
+  roll modules keep working. Initiative rolls from the header.
+- Long-press a roll to choose advantage or disadvantage. dnd5e decides between
+  its roll dialog and a straight roll by reading modifier keys, which a phone
+  does not have — without this every tap would open a desktop-shaped dialog.
+- Death saves appear on the sheet only while the character is at zero hit
+  points, showing successes and failures as pips with a roll button.
+- Proficiency is shown as four distinct states — none, half, proficient and
+  expertise — because dnd5e stores it as a multiplier and a checkbox would
+  misrepresent two of the four.
+- The sheet follows the character live: hit point changes, equipping armour and
+  active effects being applied or removed all refresh it without a reload.
+- Empty state for a player with no character assigned, which distinguishes
+  owning none from owning several and says what to ask the GM for.
+- Tablets lay the abilities out in a single row of six and split the skills
+  into two columns, which fits the whole sheet on screen without scrolling.
+- Unit tests for the actor-to-view-model mappers. These need no Foundry, no
+  browser and no world, so unlike the smoke tests they can run in CI.
+
 ### Fixed
 - Turning Phonedry off left the canvas disabled. `core.noCanvas` persists in
   client storage, so a client that had run Phonedry once kept a mapless
