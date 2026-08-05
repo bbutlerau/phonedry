@@ -113,10 +113,20 @@ All notable changes to Phonedry are recorded here. Versions follow
   inline rolls and rule references read as text rather than as markup. Holding
   does not also cast: the tap that follows a hold is suppressed, or reading a
   spell would spend a slot.
+- A log out control in the header. Suppressing the sidebar takes Foundry's own
+  logout with it, so there was no way to change user from a phone at all.
+- Holding a spell in the compendium browser shows what it does before adding
+  it, which is when a player most wants to know.
 - Unit tests for the actor-to-view-model mappers. These need no Foundry, no
   browser and no world, so unlike the smoke tests they can run in CI.
 
 ### Fixed
+- A `?phonedry=` override was lost whenever it was needed most. Opening
+  `/game?phonedry=off` while not logged in sends Foundry to its join page,
+  which does not load modules, and joining lands back on `/game` with the query
+  gone — so the escape hatch from a sheet that will not render silently did
+  nothing. Overrides are now remembered for the life of the browser tab, and
+  `?phonedry=auto` gives detection back.
 - Foundry's dialogs rendered with their content collapsed in WebKit, which
   affects every browser on iOS: the spell usage dialog stopped after its first
   heading, showing neither the slot selector nor the cast button. Dialogs are

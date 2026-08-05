@@ -92,7 +92,9 @@
     },
     "Describe": {
       "Close": "Close",
-      "Hint": "Hold a spell to read what it does."
-    }
+      "Hint": "Hold a spell to read what it does.",
+      "HintBrowser": "Hold a spell to read it before adding."
+    },
+    "LogOut": "Log out"
   }
 }

@@ -92,6 +92,28 @@ test.describe("phonedry boot path", () => {
     await context.close();
   });
 
+  test("a URL override survives a reload without the query", async ({ browser }) => {
+    // Foundry's join page does not load modules, so opening /game?phonedry=on
+    // while logged out loses the query in the redirect and the override never
+    // reaches this module. Remembering it for the tab is what makes the escape
+    // hatch survive the reload that usually follows using it.
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    await joinGame(page);
+    await reloadAt(page, { width: 1280, height: 900 }, "?phonedry=on");
+    expect((await readState(page)).phonedryActive, "override did not apply").toBe(true);
+
+    await reloadAt(page, { width: 1280, height: 900 });
+    expect((await readState(page)).phonedryActive, "override did not survive a reload").toBe(true);
+
+    // And it can be given back, so a desktop client is not stuck with it.
+    await reloadAt(page, { width: 1280, height: 900 }, "?phonedry=auto");
+    expect((await readState(page)).phonedryActive).toBe(false);
+
+    await context.close();
+  });
+
   test("?phonedry=off gives a way back from a phone", async ({ browser }) => {
     const context = await browser.newContext(TOUCH);
     const page = await context.newPage();

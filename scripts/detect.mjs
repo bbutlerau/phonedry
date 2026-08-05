@@ -62,16 +62,77 @@ export function isTabletViewport() {
  * to the tabletop, on a device where clearing site data is the only remaining
  * option.
  *
- * Appending `?phonedry=off` to the URL sidesteps the module entirely for that
- * page load, which is something a player can do from a phone unaided.
+ * Appending `?phonedry=off` to the URL sidesteps the module, `?phonedry=on`
+ * forces it, and `?phonedry=auto` forgets a previous override and returns to
+ * normal detection. All three are things a player can type on a phone unaided.
+ *
+ * The answer is remembered for the rest of the browser tab's life, and that is
+ * not a convenience — it is what makes the override work at all. Opening
+ * `/game?phonedry=off` while not logged in sends Foundry to the join page, and
+ * joining lands back on `/game` with the query gone. The override was being
+ * discarded at exactly the moment someone needed it most.
  *
  * @returns {boolean|null} True or false to force a decision, null if unset.
  */
 export function getUrlOverride() {
   const value = new URLSearchParams(window.location.search).get("phonedry");
-  if ( ["off", "0", "false"].includes(value) ) return false;
-  if ( ["on", "1", "true"].includes(value) ) return true;
-  return null;
+
+  if ( ["off", "0", "false"].includes(value) ) {
+    writeStoredOverride(false);
+    return false;
+  }
+
+  if ( ["on", "1", "true"].includes(value) ) {
+    writeStoredOverride(true);
+    return true;
+  }
+
+  if ( ["auto", "reset"].includes(value) ) {
+    writeStoredOverride(null);
+    return null;
+  }
+
+  return readStoredOverride();
+}
+
+/**
+ * Where a URL override is remembered for the rest of the tab's life.
+ *
+ * Session storage rather than a setting: an override is meant to be temporary,
+ * and closing the tab should end it. Persisting it would leave someone who once
+ * escaped a broken sheet stuck outside it for good.
+ */
+const OVERRIDE_KEY = "phonedry.override";
+
+/**
+ * Read a stored override, tolerating storage being unavailable.
+ *
+ * Session storage throws rather than returning null in some privacy modes, and
+ * an exception here happens during `setup` — early enough to take the whole
+ * sheet down with it.
+ *
+ * @returns {boolean|null}
+ */
+function readStoredOverride() {
+  try {
+    const stored = sessionStorage.getItem(OVERRIDE_KEY);
+    return (stored === null) ? null : (stored === "true");
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * @param {boolean|null} value  Null forgets any stored override.
+ */
+function writeStoredOverride(value) {
+  try {
+    if ( value === null ) sessionStorage.removeItem(OVERRIDE_KEY);
+    else sessionStorage.setItem(OVERRIDE_KEY, String(value));
+  } catch {
+    // The override still applies to this page load; it just will not survive
+    // the redirect. Nothing here is worth failing startup over.
+  }
 }
 
 /**

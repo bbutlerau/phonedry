@@ -35,12 +35,18 @@
     {{/each}}
   </div>
 
+  {{!-- Said in words, because a hold is invisible until someone tries it — and
+        reading a spell before committing to it is the whole reason to hold one
+        here. --}}
+  <p class="phonedry-browser__hint">{{localize "PHONEDRY.Describe.HintBrowser"}}</p>
+
   {{#if browser.results.length}}
     <ul class="phonedry-browser__results">
       {{#each browser.results}}
         <li>
           <button type="button" class="phonedry-browser__result"
                   data-action="addSpell" data-uuid="{{this.uuid}}"
+                  data-describe-uuid="{{this.uuid}}"
                   data-level="{{this.level}}"
                   {{#if this.owned}}disabled{{/if}}>
             <img class="phonedry-browser__icon" src="{{this.img}}" alt="" />

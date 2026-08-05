@@ -9,6 +9,23 @@
  */
 
 /**
+ * Resolve whatever a held element points at.
+ *
+ * Rows on the sheet carry an item id; rows in the spell browser carry a
+ * compendium uuid, because the spell is not on the character yet — being able
+ * to read a spell *before* adding it is most of the point of the gesture there.
+ *
+ * @param {object} dataset       The held element's dataset.
+ * @param {Actor|null} actor
+ * @returns {Promise<Item|null>}
+ */
+export async function resolveDescribable({ describe, describeUuid }, actor) {
+  if ( describeUuid ) return fromUuid(describeUuid);
+  if ( describe ) return actor?.items.get(describe) ?? null;
+  return null;
+}
+
+/**
  * Prepare an item's description for display.
  *
  * @param {Item} item

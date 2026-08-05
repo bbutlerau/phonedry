@@ -178,10 +178,24 @@ test.describe("spells", () => {
       () => page.locator(".phonedry-browser__name").allInnerTexts()
     ).toEqual(["Inflict Wounds"]);
 
+    /* --- reading a spell before committing to it --- */
+
+    // The point of the gesture here: the spell is not on the character yet, so
+    // the panel has to resolve a compendium uuid rather than an owned item.
+    await longPress(page, page.locator("[data-action='addSpell']").first());
+    await expect(page.locator(".phonedry-describe__name")).toHaveText("Inflict Wounds");
+    await expect(page.locator(".phonedry-describe__body")).not.toBeEmpty();
+
     const before = await page.evaluate(
       () => game.modules.get("phonedry").api.shell.actor.items.filter(i => i.type === "spell").length
     );
 
+    // Reading it must not add it — the hold and the tap share a control.
+    expect(await page.evaluate(
+      () => game.modules.get("phonedry").api.shell.actor.items.some(i => i.name === "Inflict Wounds")
+    ), "holding a result added the spell").toBe(false);
+
+    await page.locator("[data-action='closeDescription']").click();
     await page.locator("[data-action='addSpell']").first().click();
 
     // The document is what must change. It also has to arrive with its

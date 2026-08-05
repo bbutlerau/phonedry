@@ -21,6 +21,14 @@
           {{#if stats.header.classes}}{{stats.header.classes}}{{/if}}
         </p>
       </div>
+
+      {{!-- The only way out. Suppressing the sidebar takes Foundry's own logout
+            with it, so without this a player on a phone cannot change user
+            without clearing site data. --}}
+      <button type="button" class="phonedry-header__logout" data-action="logOut"
+              aria-label="{{localize 'PHONEDRY.LogOut'}}">
+        <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+      </button>
     </div>
 
     {{!-- Hit points get the full width and a bar: it is the only number here
@@ -116,10 +124,10 @@
     </div>
 
     {{!--
-      How the next roll is made. This is a visible control rather than a
-      gesture: a long press is the obvious way to offer this on a phone, and it
-      is unusable on iOS, where the system hijacks the hold to select text and
-      raise a Copy / Look Up callout over whatever the app was doing.
+      How the next roll is made. A visible control rather than a gesture: a
+      hold is unmarked and undiscoverable, and this is a setting a player needs
+      to see the state of without touching anything. Holding is used elsewhere
+      on the sheet, but only for inspecting.
 
       It is sticky, so advantage granted for a whole fight is set once. The
       shell mirrors the value onto the root element, which is what lets the

@@ -24,7 +24,7 @@ import {
 } from "../rolls.mjs";
 import { applyDamage, applyHealing, applyTempHP, parseAmount } from "../hp.mjs";
 import { describeRoll, isOwnRoll, pushRoll } from "../data/roll-log.mjs";
-import { describeItem } from "../describe.mjs";
+import { describeItem, resolveDescribable } from "../describe.mjs";
 import { bindLongPress } from "./gestures.mjs";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -46,6 +46,7 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       rollTyped: PhonedryShell.#onRollTyped,
       rollInitiative: PhonedryShell.#onRollInitiative,
       closeDescription: PhonedryShell.#onCloseDescription,
+      logOut: PhonedryShell.#onLogOut,
       closeSpellBrowser: PhonedryShell.#onCloseSpellBrowser,
       openSpellBrowser: PhonedryShell.#onOpenSpellBrowser,
       setRollMode: PhonedryShell.#onSetRollMode,
@@ -451,8 +452,9 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   #bindLongPress() {
     this.#unbindLongPress?.();
-    this.#unbindLongPress = bindLongPress(this.element, "[data-describe]", async target => {
-      const item = this.#actor?.items.get(target.dataset.describe);
+    const selector = "[data-describe], [data-describe-uuid]";
+    this.#unbindLongPress = bindLongPress(this.element, selector, async target => {
+      const item = await resolveDescribable(target.dataset, this.#actor);
       if ( !item ) return;
 
       this.#describe = await describeItem(item);
@@ -726,6 +728,17 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /**
    * Close the spell browser.
+   *
+   * @this {PhonedryShell}
+   */
+  static #onLogOut() {
+    // Core's own call, so it tears the session down the same way the sidebar
+    // button does rather than just navigating away from a live connection.
+    game.logOut();
+  }
+
+  /**
+   * Close the description panel.
    *
    * @this {PhonedryShell}
    */
