@@ -225,8 +225,9 @@ The dev loop: the repo is bind-mounted into the Foundry container at
 is on, so Foundry reloads CSS and templates without a refresh; changes to `.mjs`
 files still need a browser reload.
 
-Foundry runs at **http://foundry.srv** (tailnet) or `localhost:30000`. Container
-logs: `docker compose logs foundry` from `/home/server/docker`.
+The development Foundry runs in Docker and answers on `localhost:30000`.
+Container logs: `docker compose logs foundry`, from wherever the compose file
+lives — it is outside this repository.
 
 Use `docker compose stop foundry && docker compose up -d foundry` rather than
 `docker compose restart foundry`. Restart brings the container back before
@@ -247,7 +248,7 @@ seems to need a secret, raise it before building it.
 
 - Never write API keys, tokens, passwords, or personal file paths into tracked
   files.
-- The Foundry container's credentials live in `/home/server/docker/.env`, which
+- The Foundry container's credentials live in the Docker stack's `.env`, which
   is outside this repo. Treat that file as off-limits to read, print or log.
 - Confirm before `git push`, adding a dependency from an unfamiliar source, or
   any command that deletes files or changes system settings.
@@ -263,12 +264,12 @@ seems to need a secret, raise it before building it.
 
 ## Environment notes
 
-- **Dev/test Foundry:** Docker, `felddy/foundryvtt:13` (13.351), on the Ubuntu
-  home server. Compose file at `/home/server/docker/docker-compose.yml`.
+- **Dev/test Foundry:** Docker, `felddy/foundryvtt:13` (13.351). The compose
+  file lives outside this repository.
 - **System:** dnd5e 5.3.3, with the official PHB, DMG and Monster Manual modules
   installed for realistic compendium data.
 - **Test world:** `testing`.
-- **Brad's own Foundry** normally runs on a MacBook Pro M4 Pro; the Docker
-  instance exists so development doesn't depend on it.
+- Brad's own Foundry normally runs on his laptop; the Docker instance exists so
+  development doesn't depend on it.
 - **Runtime:** whatever Node version Foundry v13 bundles (currently 22.x). The
   module itself ships unbundled and has no runtime dependencies.
