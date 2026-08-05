@@ -20,6 +20,11 @@ All notable changes to Phonedry are recorded here. Versions follow
   only recourse.
 - A plain-DOM failure panel shown if the sheet cannot render, replacing what was
   previously a silent blank screen.
+- Two guaranteed-noise core notifications are filtered: the permanent
+  "window too small" resolution error, which no phone can satisfy and which
+  swallowed taps where it overlapped the sheet, and the "scene not displayed
+  because the canvas is disabled" notice, which describes the design rather
+  than a problem.
 
 ### Fixed
 - The shell rendered nothing at all: its Handlebars part declared two top-level

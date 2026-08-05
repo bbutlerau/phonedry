@@ -34,6 +34,28 @@ import { MODULE_ID } from "./constants.mjs";
 const SUPPRESSED_UI = ["nav", "controls", "hotbar", "players", "pause", "sidebar", "webrtc"];
 
 /**
+ * Notification keys Phonedry drops.
+ *
+ * Both of these are guaranteed to fire for every Phonedry user, every session,
+ * and neither describes a problem the player can act on.
+ *
+ * `ERROR.RESOLUTION.*` — `ClientIssues#validateResolution` raises a *permanent*
+ * error whenever the viewport is under 1024×768, advising the player to enlarge
+ * the window or reduce browser zoom. On a phone that is impossible to follow.
+ * Worse than noise: it never auto-dismisses, it covers the sheet, and it
+ * swallows taps that land on it. Foundry re-runs the check on resize, so
+ * dismissing it once is not enough — it has to be filtered at the source.
+ *
+ * `INFO.SceneViewCanvasDisabled` — announces that the scene is not being drawn
+ * because the canvas is off. For this module that is not news, it is the entire
+ * design, and it reappears on every scene change.
+ *
+ * Deliberately narrow. Every other notification, including real errors, still
+ * reaches the player.
+ */
+const SUPPRESSED_NOTIFICATIONS = /^(ERROR\.RESOLUTION\.|INFO\.SceneViewCanvasDisabled)/;
+
+/**
  * Turn off canvas rendering for this client.
  *
  * `Canvas#initialize` returns immediately when this setting is true, so PIXI is
@@ -81,6 +103,28 @@ export function suppressCoreUI() {
 }
 
 /**
+ * Filter out the unfixable "window too small" error.
+ *
+ * `Notifications#error` delegates to `#notify`, so overriding the one method
+ * covers every severity. Returning null rather than a notification is safe:
+ * core guards its stored handle with a truthiness check before calling
+ * `remove`, so a dropped notification simply never gets removed.
+ */
+export function filterResolutionWarnings() {
+  const cls = CONFIG.ui.notifications;
+  if ( !cls ) return;
+
+  CONFIG.ui.notifications = class PhonedryNotifications extends cls {
+    notify(message, type = "info", options = {}) {
+      if ( (typeof message === "string") && SUPPRESSED_NOTIFICATIONS.test(message) ) return null;
+      return super.notify(message, type, options);
+    }
+  };
+}
+
+/* -------------------------------------------- */
+
+/**
  * Allow CSS `env(safe-area-inset-*)` to report real values.
  *
  * Foundry ships a viewport meta of
@@ -114,6 +158,7 @@ export function activateBodyClass() {
 export function boot() {
   const changed = disableCanvas();
   suppressCoreUI();
+  filterResolutionWarnings();
   enableSafeAreaInsets();
   activateBodyClass();
 
