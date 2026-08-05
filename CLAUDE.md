@@ -97,6 +97,23 @@ Verify your own work as part of finishing a task rather than waiting to be told.
 No need to narrate every check. Say plainly if something didn't work or you're
 unsure.
 
+Run the boot smoke tests before calling a milestone done:
+
+```bash
+npm test          # requires the Docker Foundry to be running
+```
+
+These drive the real Foundry instance rather than a mock, deliberately: every
+bug so far has come from core behaving differently than expected, and a mocked
+Foundry would faithfully reproduce our own assumptions and catch none of them.
+They cannot run in CI, because Foundry needs a licence and a world. The mapper
+unit tests planned for M2 are the part that will run in CI, being pure
+functions with no Foundry attached.
+
+A test that passes alone but fails in the suite is usually persisted client
+state leaking between contexts — `core.noCanvas` in particular survives a page
+load, which is exactly the bug the escape-hatch test caught.
+
 The dev loop: the repo is bind-mounted into the Foundry container at
 `/data/Data/modules/phonedry`, so edits are live immediately. `flags.hotReload`
 is on, so Foundry reloads CSS and templates without a refresh; changes to `.mjs`

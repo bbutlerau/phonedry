@@ -12,7 +12,17 @@ export const MODULE_ID = "phonedry";
  */
 export const SETTINGS = {
   /** How the mobile client is chosen: "auto" | "always" | "never". */
-  MODE: "mode"
+  MODE: "mode",
+
+  /**
+   * Whether Phonedry — rather than the player — turned off `core.noCanvas`.
+   *
+   * `core.noCanvas` persists in client storage, so disabling it is not confined
+   * to the page load that did it. Without recording ownership we could never
+   * safely turn it back on, and could never tell our own change apart from a
+   * player who deliberately runs canvas-free on a laptop.
+   */
+  CANVAS_DISABLED_BY_US: "canvasDisabledByUs"
 };
 
 /**

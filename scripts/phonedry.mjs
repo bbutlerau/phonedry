@@ -13,7 +13,7 @@
 import { MODULE_ID } from "./constants.mjs";
 import { registerSettings } from "./settings.mjs";
 import { shouldUseMobileClient } from "./detect.mjs";
-import { boot } from "./boot.mjs";
+import { boot, restoreCanvas } from "./boot.mjs";
 import { renderFatalError } from "./fallback.mjs";
 import { PhonedryShell } from "./sheet/shell.mjs";
 
@@ -51,7 +51,14 @@ Hooks.once("init", () => {
  */
 Hooks.once("setup", () => {
   active = shouldUseMobileClient();
-  if ( !active ) return;
+
+  // Not activating is not the same as doing nothing. A client that ran Phonedry
+  // on a previous load has a persisted no-canvas setting that must be handed
+  // back, or turning Phonedry off leaves the tabletop permanently mapless.
+  if ( !active ) {
+    restoreCanvas();
+    return;
+  }
 
   boot();
 });

@@ -1,0 +1,13 @@
+{
+  "name": "phonedry",
+  "private": true,
+  "description": "Development tooling for the Phonedry Foundry VTT module. The module itself ships unbundled with no runtime dependencies — nothing here is installed by players.",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0"
+  }
+}

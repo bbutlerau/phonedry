@@ -22,7 +22,7 @@
  *   rendered, hiding them only hides DOM we already paid to create.
  */
 
-import { MODULE_ID } from "./constants.mjs";
+import { MODULE_ID, SETTINGS } from "./constants.mjs";
 
 /**
  * The singleton UI applications Phonedry replaces.
@@ -71,7 +71,41 @@ const SUPPRESSED_NOTIFICATIONS = /^(ERROR\.RESOLUTION\.|INFO\.SceneViewCanvasDis
  */
 export function disableCanvas() {
   if ( game.settings.get("core", "noCanvas") ) return false;
+
   game.settings.set("core", "noCanvas", true);
+
+  // Record that the change was ours, so it can be undone. A player who already
+  // had no-canvas mode on gets no flag and is left alone.
+  game.settings.set(MODULE_ID, SETTINGS.CANVAS_DISABLED_BY_US, true);
+  return true;
+}
+
+/* -------------------------------------------- */
+
+/**
+ * Give the canvas back when Phonedry is not driving.
+ *
+ * `core.noCanvas` persists in client storage, so a client that ran Phonedry
+ * once stays canvas-free afterwards unless something puts it back. That turns
+ * the `?phonedry=off` escape hatch into a trap: the player escapes a broken
+ * sheet and lands on a tabletop with no map, which looks like a worse failure
+ * than the one they were escaping.
+ *
+ * Called from "setup" on any load where Phonedry is inactive, which is early
+ * enough for the canvas to initialise normally in the same page load — no
+ * second reload required.
+ *
+ * Only reverses Phonedry's own change. If the player turned no-canvas mode on
+ * themselves, the flag was never set and their preference stands.
+ *
+ * @returns {boolean} True if the canvas was restored.
+ */
+export function restoreCanvas() {
+  if ( !game.settings.get(MODULE_ID, SETTINGS.CANVAS_DISABLED_BY_US) ) return false;
+
+  game.settings.set("core", "noCanvas", false);
+  game.settings.set(MODULE_ID, SETTINGS.CANVAS_DISABLED_BY_US, false);
+  console.log(`${MODULE_ID} | inactive — canvas restored`);
   return true;
 }
 

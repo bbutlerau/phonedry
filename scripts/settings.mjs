@@ -37,6 +37,14 @@ export function registerSettings() {
     // is made once during startup. A reload is the only honest way to apply it.
     requiresReload: true
   });
+
+  // Bookkeeping, not a preference — hidden from the settings UI.
+  game.settings.register(MODULE_ID, SETTINGS.CANVAS_DISABLED_BY_US, {
+    scope: "client",
+    config: false,
+    type: Boolean,
+    default: false
+  });
 }
 
 /**

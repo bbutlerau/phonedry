@@ -26,7 +26,16 @@ All notable changes to Phonedry are recorded here. Versions follow
   because the canvas is disabled" notice, which describes the design rather
   than a problem.
 
+- Playwright boot smoke tests covering activation on touch devices, the tablet
+  layout, non-activation on desktop, and the `?phonedry=off` escape hatch.
+
 ### Fixed
+- Turning Phonedry off left the canvas disabled. `core.noCanvas` persists in
+  client storage, so a client that had run Phonedry once kept a mapless
+  tabletop afterwards — the escape hatch delivered players from a broken sheet
+  into a broken tabletop. Phonedry now records that the change was its own and
+  hands the canvas back on any load where it is not active, while leaving alone
+  players who chose no-canvas mode themselves.
 - The shell rendered nothing at all: its Handlebars part declared two top-level
   elements without `root: true`, which made core throw inside the render
   promise. Because the canvas was disabled first, the failure presented as a
