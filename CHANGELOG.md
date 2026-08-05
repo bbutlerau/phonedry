@@ -99,11 +99,11 @@ All notable changes to Phonedry are recorded here. Versions follow
   browser and no world, so unlike the smoke tests they can run in CI.
 
 ### Fixed
-- Attempted fix for Foundry's dialogs rendering with their content collapsed in
-  WebKit, which affects the spell usage dialog among others. Dialogs are sized
-  to their content and capped against the viewport rather than depending on a
-  computed height. Unverified: the failure does not reproduce in any browser
-  available for testing here, only in Safari itself.
+- Foundry's dialogs rendered with their content collapsed in WebKit, which
+  affects every browser on iOS: the spell usage dialog stopped after its first
+  heading, showing neither the slot selector nor the cast button. Dialogs are
+  now sized to their content and capped against the viewport rather than
+  depending on a height Foundry computes, which comes out short there.
 - Initiative opened Foundry's roll configuration dialog, which renders badly on
   iOS: the whole middle of the window — the formula, the situational bonus
   field and the roll mode select — collapsed to nothing, leaving a title and

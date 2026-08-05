@@ -69,6 +69,11 @@ The two platforms fail differently, and both need testing:
   cannot catch this class of problem and any fix for it has to be verified on a
   real Safari. `?phonedry=on` forces the module on for that.
 
+  There is a fix in `styles/phonedry.css` under "Foundry dialogs in WebKit",
+  confirmed on an iPhone: dialogs are sized to their content rather than to a
+  height Foundry computes. It is scoped to this module, so it does nothing for
+  the same bug on a desktop Safari — that one needs reporting upstream.
+
   This is a problem to weigh, not a rule to apply. Work through it in order:
 
   1. **Is there an API that skips the dialog?** Initiative had one — the dialog

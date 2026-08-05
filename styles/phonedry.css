@@ -1306,23 +1306,25 @@
  * — but every browser on iOS is WebKit, so it lands squarely on Phonedry's
  * users and there is no version of "wait for upstream" that helps them.
  *
- * The mechanism, as far as it can be established without a reproduction:
- * dialogs are flex columns whose height Foundry computes and applies, with
- * `.window-content` as `flex: 1 1 0%` and `overflow: auto`. A flex child with a
- * zero basis takes its size entirely from the space the parent gives it, so if
- * that computed height comes out short, the content is clipped rather than
- * scrolled — which is what the screenshots show.
+ * The mechanism: dialogs are flex columns whose height Foundry computes and
+ * applies, with `.window-content` as `flex: 1 1 0%` and `overflow: auto`. A
+ * flex child with a zero basis takes its size entirely from the space the
+ * parent gives it, so when that computed height comes out short the content is
+ * clipped rather than scrolled.
  *
  * The fix removes the dependency on that computed height: the dialog sizes to
  * its content, and is capped against the viewport instead. `dvh` rather than
  * `vh` because the two differ while a mobile browser's chrome is sliding in and
  * out, and this is exactly the sort of measurement that goes wrong then.
  *
- * NOT VERIFIED against the failure. It cannot be: Playwright's WebKit renders
- * these dialogs correctly and reports geometry identical to Chromium, so the
- * build that reproduces this is not one available here. What has been checked
- * is that it causes no regression in Chromium or in Playwright's WebKit. If it
- * turns out not to help, it should be reverted rather than added to.
+ * Confirmed on an iPhone: the spell usage dialog now shows its slot selector,
+ * consumption checkbox and cast button, where before it stopped after the first
+ * heading.
+ *
+ * A regression here cannot be caught by the smoke tests. Playwright's WebKit
+ * renders these dialogs correctly either way and reports geometry identical to
+ * Chromium, so the only check that means anything is a real Safari —
+ * `?phonedry=on` forces the module on for one.
  *
  * Scoped under `.phonedry-active`, so it only applies where this module is
  * driving. To try it on a desktop Safari, force the module on with
