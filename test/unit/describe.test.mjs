@@ -22,12 +22,94 @@ const SPELL = {
   components: { vsm: "V, S", tags: [] }
 };
 
+/** The cleric's pistol, as dnd5e labels it. A weapon has no components. */
+const PISTOL = {
+  activation: "Action",
+  range: "30/90 ft",
+  target: "",
+  toHit: "+6",
+  damages: [{ formula: "1d10 + 3", label: "1d10 + 3 Piercing", damageType: "piercing" }],
+  properties: [{ abbr: "amm", label: "Ammunition" }]
+};
+
+/**
+ * Chain mail, as dnd5e labels it.
+ *
+ * Everything a weapon has is empty and there is no description text at all in
+ * the development world, which is the case that prompted these facts: without
+ * them, holding it gives a name and a blank panel.
+ */
+const CHAIN_MAIL = {
+  armor: "16 AC",
+  damage: "",
+  damages: [],
+  properties: [{ abbr: "stealthDisadvantage", label: "Stealth Disadvantage" }]
+};
+
 describe("buildFacts", () => {
   it("puts the facts in the order they are asked for", () => {
     // What it costs to cast, how far it reaches, what it touches, how long it
     // lasts — the order a caster reads them at the table.
     assert.deepEqual(buildFacts(SPELL).map(f => f.value),
       ["Action", "120 ft", "1 creature", "1 round", "V, S"]);
+  });
+
+  it("leads a weapon with what it hits and what it does", () => {
+    // The reason the row was held. Above range for the same reason casting time
+    // is on a spell.
+    const facts = buildFacts(PISTOL);
+
+    assert.deepEqual(facts.map(f => f.label), [
+      "PHONEDRY.Describe.CastingTime",
+      "PHONEDRY.Describe.ToHit",
+      "PHONEDRY.Describe.Damage",
+      "PHONEDRY.Describe.Range",
+      "PHONEDRY.Describe.Properties"
+    ]);
+
+    // The damage type comes with the formula here, unlike on an action row.
+    // The actions screen shows the bare formula because the full label does not
+    // fit a phone row; a panel has the width, and resistance is exactly what
+    // someone opens one to check.
+    assert.equal(facts[2].value, "1d10 + 3 Piercing");
+  });
+
+  it("joins a weapon that deals more than one kind of damage", () => {
+    const facts = buildFacts({
+      damages: [{ label: "1d8 + 3 Slashing" }, { label: "2d6 Fire" }]
+    });
+
+    assert.equal(facts[0].value, "1d8 + 3 Slashing, 2d6 Fire");
+  });
+
+  it("falls back to the bare formula where dnd5e composed no label", () => {
+    assert.equal(buildFacts({ damages: [{ formula: "1d6" }] })[0].value, "1d6");
+  });
+
+  it("gives armour the one fact it has", () => {
+    // Chain mail in the development world has an armour class, a property and
+    // no description text whatsoever. Without these the panel is a name and a
+    // blank.
+    const facts = buildFacts(CHAIN_MAIL);
+
+    assert.deepEqual(facts, [
+      { label: "PHONEDRY.Describe.ArmourClass", value: "16 AC" },
+      { label: "PHONEDRY.Describe.Properties", value: "Stealth Disadvantage" }
+    ]);
+  });
+
+  it("does not state a spell's properties twice", () => {
+    // dnd5e reports concentration and ritual through `components.tags` and
+    // again in `properties`. Only the first is used, or every spell would say
+    // the same thing in two rows.
+    const facts = buildFacts({
+      ...SPELL,
+      components: { vsm: "V, S", tags: ["Concentration"] },
+      properties: [{ label: "Concentration" }, { label: "Verbal" }]
+    });
+
+    assert.equal(facts.filter(f => f.label === "PHONEDRY.Describe.Properties").length, 0);
+    assert.equal(facts.at(-1).value, "Concentration");
   });
 
   it("uses dnd5e's own composed strings rather than deriving them", () => {

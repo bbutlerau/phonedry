@@ -72,6 +72,7 @@
       "Actions": "Actions",
       "Conditions": "Status",
       "Label": "Character sheet sections",
+      "Items": "Items",
       "Spells": "Spells",
       "Stats": "Stats"
     },
@@ -91,17 +92,39 @@
       "NoneHeading": "No actions",
       "Other": "Other"
     },
+    "Items": {
+      "Add": "Add gear",
+      "AddFailed": "Phonedry could not add that item. See the console for details.",
+      "Added": "{name} added.",
+      "AttuneAria": "Attune to {name}",
+      "Attuned": "attuned",
+      "Carried": "Carried",
+      "EquipAria": "Equip {name}",
+      "Failed": "Phonedry could not change {what}. See the console for details.",
+      "GroupEmpty": "Empty.",
+      "NoCoin": "No coin",
+      "NoPacks": "No item compendium is available in this world.",
+      "NoneBodyAdd": "This character is not carrying anything. Tap Add gear to pick something up.",
+      "NoneHeading": "Nothing carried",
+      "SearchLabel": "Search gear",
+      "SearchPlaceholder": "Search gear",
+      "SortLabel": "Order gear by",
+      "SortName": "Name",
+      "SortType": "Kind"
+    },
+    "Compendium": {
+      "Close": "Close",
+      "MoreResults": "Showing {shown} of {total}. Keep typing to narrow it down.",
+      "NoMatches": "Nothing matches that search."
+    },
     "Spells": {
       "Add": "Add spells",
       "AddFailed": "Phonedry could not add that spell. See the console for details.",
       "Added": "{name} added.",
       "AlreadyKnown": "Known",
-      "CloseBrowser": "Close",
       "Concentration": "Conc.",
       "Failed": "Phonedry could not use {what}. See the console for details.",
-      "MoreResults": "Showing {shown} of {total}. Keep typing to narrow it down.",
       "NoList": "No spell list is available for this character's class.",
-      "NoMatches": "No spells match that search.",
       "NoneBodyAdd": "This character has no spells yet. Tap Add spells to choose some.",
       "NoneHeading": "No spells",
       "Preparation": "the preparation change",
@@ -129,19 +152,26 @@
       "Over": "That is more than {limit}."
     },
     "Describe": {
+      "ArmourClass": "Armour class",
       "Back": "Back",
       "CastingTime": "Casting time",
       "Close": "Close",
       "Components": "Components",
+      "Damage": "Damage",
       "Duration": "Duration",
       "Hint": "Hold a spell to read what it does.",
       "HintActions": "Hold an action to read what it does.",
       "HintBrowser": "Hold a spell to read it before adding.",
       "HintConditions": "Hold a condition to read the rule.",
+      "HintItemBrowser": "Hold an item to read it before adding.",
+      "HintItems": "Tap or hold an item to read what it is.",
       "HintSkills": "Hold a skill to read the rule.",
+      "NoText": "No description was written for this.",
+      "Properties": "Properties",
       "Range": "Range",
       "Tags": "Notes",
-      "Target": "Target"
+      "Target": "Target",
+      "ToHit": "Attack"
     },
     "LogOut": "Log out"
   }

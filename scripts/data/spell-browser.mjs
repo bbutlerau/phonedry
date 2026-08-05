@@ -1,23 +1,18 @@
 /**
  * Searching the compendium for spells to add.
  *
- * Pure and synchronous, like the other mappers. What it works on is compendium
- * *index* entries — `{ _id, name, img, uuid, pack }` — rather than documents.
- * That distinction is the whole performance story of this screen: the indexes
- * dnd5e has already built are in memory and free to search, while loading the
- * documents behind them is not.
+ * Pure and synchronous, like the other mappers. The generic half of the job —
+ * folding a query, dropping duplicate copies, capping the result count — lives
+ * in `browser.mjs`, because the gear browser has exactly the same problem and
+ * neither of them owns it.
  */
 
-/**
- * How many results to show at once.
- *
- * A cleric's list is 226 spells and every row is a DOM node with an image. The
- * cap is not about the list being unreadable — it is about not building two
- * hundred rows on a phone between keystrokes. Anyone looking for a specific
- * spell types two more letters; anyone browsing is served fine by the first
- * page.
- */
-export const MAX_RESULTS = 60;
+import { dedupeEntries, fold, MAX_RESULTS } from "./browser.mjs";
+
+// Re-exported because they were part of this module's surface before the gear
+// browser needed them too, and callers should not have to know which file a
+// primitive was moved into.
+export { dedupeEntries, fold, MAX_RESULTS };
 
 /**
  * How results can be ordered.
@@ -28,58 +23,6 @@ export const MAX_RESULTS = 60;
  * like a hang.
  */
 export const SORTS = { NAME: "name", LEVEL: "level", SCHOOL: "school" };
-
-/**
- * Fold a string for comparison: lower case, accents removed.
- *
- * Without the accent handling, searching "faerie" would miss nothing but
- * searching for a spell with a diacritic in its name would need the player to
- * produce that diacritic on a phone keyboard.
- *
- * @param {string} value
- * @returns {string}
- */
-export function fold(value) {
-  return (value ?? "")
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
-}
-
-/* -------------------------------------------- */
-
-/**
- * Remove entries that are the same spell from a different compendium.
- *
- * Every spell in this world appears twice: once in dnd5e's own pack and once in
- * the Player's Handbook module, sharing an identifier. Offering both is the
- * exact confusion the source stripes exist to resolve, arriving one step
- * earlier — two identical rows with no way to tell them apart.
- *
- * Where there is a choice, the entry from outside the core compendium wins. A
- * premium module carries the full text and artwork, and it is where the
- * character's existing spells came from, so matching it keeps a sheet
- * internally consistent.
- *
- * @param {object[]} entries
- * @returns {object[]}
- */
-export function dedupeEntries(entries) {
-  const byId = new Map();
-
-  for ( const entry of entries ) {
-    const existing = byId.get(entry._id);
-    if ( !existing ) {
-      byId.set(entry._id, entry);
-      continue;
-    }
-
-    const existingIsCore = existing.pack?.startsWith("dnd5e.");
-    if ( existingIsCore && !entry.pack?.startsWith("dnd5e.") ) byId.set(entry._id, entry);
-  }
-
-  return [...byId.values()];
-}
 
 /* -------------------------------------------- */
 
@@ -138,6 +81,14 @@ function describeEntry(entry, labels, owned) {
     school,
     levelLabel: (level === null) ? null : (labels.levels?.[level] ?? String(level)),
     schoolLabel: school ? (labels.schools?.[school]?.label ?? school) : null,
+
+    // The row's second line, composed here rather than in the template. The
+    // gear browser shares that template and has entirely different things to
+    // say on it, so the one thing they can agree on is a finished string.
+    meta: [
+      (level === null) ? null : (labels.levels?.[level] ?? String(level)),
+      school ? (labels.schools?.[school]?.label ?? school) : null
+    ].filter(Boolean).join(" · "),
 
     // Already on the sheet. Shown rather than filtered out, because a player
     // searching for a spell they already have wants to be told that, not left

@@ -1,0 +1,174 @@
+{{!--
+  The inventory screen: what the character is carrying, and what they have ready
+  to use.
+
+  Grouped by where a thing is rather than by what kind of thing it is. Two lamps
+  — one in hand, one at the bottom of the pack — are an unexplained duplicate
+  when sorted by type and an obvious pair of facts when sorted by container.
+
+  A tab body, included by content.hbs. No wrapper and no single-root
+  constraint; those belong to the part.
+--}}
+{{!-- Picking something up is the one thing on this screen that is not about
+      what is already on it, so it sits above the list rather than in the tab
+      bar, where it would compete with navigation. It is outside the empty
+      branch below because a character carrying nothing is exactly who needs
+      it. --}}
+<button type="button" class="phonedry-add" data-action="openBrowser" data-browser="items">
+  {{localize "PHONEDRY.Items.Add"}}
+</button>
+
+{{#if items.empty}}
+
+  <section class="phonedry-empty">
+    <h2>{{localize "PHONEDRY.Items.NoneHeading"}}</h2>
+    <p>{{localize "PHONEDRY.Items.NoneBodyAdd"}}</p>
+  </section>
+
+{{else}}
+
+  {{!-- What the pack costs and what is in the purse, above the pack itself:
+        both are asked before deciding what to pick up or put down, and having
+        to scroll past the answer to reach the question is the wrong way
+        round. --}}
+  <section class="phonedry-section phonedry-carry">
+
+    {{#if items.encumbrance}}
+      {{!-- The bar is the fast read and the number is the exact one, the same
+            pairing the hit point bar uses. Only exceeding carrying capacity is
+            marked: dnd5e's middle two thresholds belong to an optional variant
+            rule, and colouring a sheet for a rule the table may not be playing
+            would be telling the player something untrue. --}}
+      <div class="phonedry-carry__load {{#if items.encumbrance.over}}phonedry-carry__load--over{{/if}}">
+        <div class="phonedry-carry__bar" aria-hidden="true">
+          <span class="phonedry-carry__fill" style="width: {{items.encumbrance.pct}}%"></span>
+        </div>
+        <span class="phonedry-carry__weight">
+          {{items.encumbrance.value}}<span class="phonedry-carry__max">/{{items.encumbrance.max}}</span>
+          {{localize items.encumbrance.units}}
+        </span>
+      </div>
+    {{/if}}
+
+    <div class="phonedry-carry__row">
+      {{#if items.currency.length}}
+        <ul class="phonedry-coins">
+          {{#each items.currency}}
+            <li class="phonedry-coin phonedry-coin--{{this.key}}">
+              {{this.value}}<span class="phonedry-coin__label">{{localize this.label}}</span>
+            </li>
+          {{/each}}
+        </ul>
+      {{else}}
+        {{!-- Said rather than left blank: an empty space where money goes reads
+              as the sheet not knowing, and "no coin" is a real answer. --}}
+        <p class="phonedry-coins phonedry-coins--empty">{{localize "PHONEDRY.Items.NoCoin"}}</p>
+      {{/if}}
+
+      {{#if items.attunement}}
+        <span class="phonedry-attunement {{#if items.attunement.over}}phonedry-attunement--over{{/if}}">
+          <i class="fa-solid fa-sun" aria-hidden="true"></i>
+          {{items.attunement.value}}/{{items.attunement.max}}
+          <span class="phonedry-attunement__label">{{localize "PHONEDRY.Items.Attuned"}}</span>
+        </span>
+      {{/if}}
+    </div>
+
+  </section>
+
+  {{#each items.groups}}
+    {{!-- Keyed by where the group is — "carried", or the container's id. The
+          heading is a translated name and a container's is whatever the player
+          called their pack, so neither identifies a group reliably. --}}
+    <section class="phonedry-section" data-group="{{this.key}}">
+
+      {{#if this.container}}
+        {{!-- A container heads its own group rather than also appearing as a row
+              in the carried list, where the player would see the same pack named
+              twice and have to work out which one was the pack. The heading
+              therefore carries what the row would have: the artwork, the equip
+              toggle, and the weight of the pack with everything in it. --}}
+        <h2 class="phonedry-section__heading phonedry-section__heading--container">
+          {{> "modules/phonedry/templates/parts/item-equip.hbs" entry=this.container}}
+          <img class="phonedry-item__icon" src="{{this.container.img}}" alt="" />
+          <span class="phonedry-item__name">{{this.label}}</span>
+          {{#if this.container.weight}}
+            <span class="phonedry-item__weight">{{this.container.weight.value}} {{localize this.container.weight.units}}</span>
+          {{/if}}
+        </h2>
+      {{else}}
+        <h2 class="phonedry-section__heading">{{localize this.label}}</h2>
+      {{/if}}
+
+      {{#if this.entries.length}}
+        <ul class="phonedry-items">
+          {{#each this.entries}}
+            {{!-- The same stripe palette the actions screen uses for what kind of
+                  thing a row is. A weapon here and a weapon there should look
+                  like the same claim. --}}
+            <li class="phonedry-item phonedry-kind--{{this.itemType}} {{#if this.equipped}}phonedry-item--equipped{{/if}}">
+
+              {{> "modules/phonedry/templates/parts/item-equip.hbs" entry=this}}
+
+              {{!-- Tapping the row reads it. There is nothing else to do with an
+                    item from here — using one lives on the actions screen, and
+                    equipping has its own control — so the largest target on the
+                    row goes to the only remaining question, which is "what is
+                    this". The hold gesture answers it too, so a player arriving
+                    from the spells screen finds what they expect there. --}}
+              <button type="button" class="phonedry-item__read"
+                      data-action="describeItem"
+                      data-item-id="{{this.id}}"
+                      data-describe="{{this.id}}">
+
+                <img class="phonedry-item__icon" src="{{this.img}}" alt="" />
+
+                <span class="phonedry-item__body">
+                  <span class="phonedry-item__name">
+                    {{this.name}}
+                    {{!-- Quantity beside the name rather than out with the
+                          numbers: "Rations" and "Rations ×7" are different facts
+                          about the same row, and the second reads as part of the
+                          name. --}}
+                    {{#if (gt this.quantity 1)}}<span class="phonedry-item__quantity">&times;{{this.quantity}}</span>{{/if}}
+                  </span>
+                  <span class="phonedry-item__meta">
+                    {{#if this.typeLabel}}<span class="phonedry-item__type">{{localize this.typeLabel}}</span>{{/if}}
+                    {{#if this.rarity}} · {{this.rarity}}{{/if}}
+                  </span>
+                </span>
+
+                {{#if this.weight}}
+                  <span class="phonedry-item__weight">{{this.weight.value}} {{localize this.weight.units}}</span>
+                {{/if}}
+
+              </button>
+
+              {{!-- Attunement on the trailing edge, away from the equip pip.
+                    They are separate states with separate rules — a shield is
+                    equipped and not attuned, a magic amulet may be attuned while
+                    stowed — and putting the two controls together would invite
+                    the reading that one implies the other. --}}
+              {{#if this.attunable}}
+                <button type="button" class="phonedry-item__attune"
+                        data-action="toggleAttuned" data-item-id="{{this.id}}"
+                        aria-pressed="{{#if this.attuned}}true{{else}}false{{/if}}"
+                        aria-label="{{localize 'PHONEDRY.Items.AttuneAria' name=this.name}}">
+                  <i class="fa-solid fa-sun" aria-hidden="true"></i>
+                </button>
+              {{/if}}
+
+            </li>
+          {{/each}}
+        </ul>
+      {{else}}
+        <p class="phonedry-section__note">{{localize "PHONEDRY.Items.GroupEmpty"}}</p>
+      {{/if}}
+
+    </section>
+  {{/each}}
+
+  {{!-- Said in words because a hold is invisible until someone tries it. --}}
+  <p class="phonedry-section__note">{{localize "PHONEDRY.Describe.HintItems"}}</p>
+
+{{/if}}

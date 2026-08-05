@@ -1,6 +1,10 @@
 # OS / editor
 .DS_Store
 Thumbs.db
+
+# AppleDouble sidecars, which macOS leaves beside a file when it is copied to a
+# non-HFS volume. `._session.md` turned up next to the untracked handover note.
+._*
 .idea/
 .vscode/
 *.swp

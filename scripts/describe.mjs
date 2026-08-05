@@ -59,6 +59,29 @@ function sourceHtml(doc) {
  */
 const FACTS = [
   { key: "activation", label: "PHONEDRY.Describe.CastingTime" },
+
+  // A weapon's headline, above range for the same reason casting time is: it is
+  // what the row was held to find out.
+  { key: "toHit", label: "PHONEDRY.Describe.ToHit" },
+
+  /*
+   * Damage carries its type here, unlike on an action row.
+   *
+   * The actions screen shows the bare formula because "1d10 + 3 Piercing" does
+   * not fit a phone row, and the type is a tap away in the chat card. A
+   * description panel has the width, and resistance and immunity are exactly
+   * what a player opens one to check — so this uses dnd5e's full composed
+   * label. Several entries where a weapon deals more than one kind.
+   */
+  {
+    label: "PHONEDRY.Describe.Damage",
+    from: labels => (labels.damages ?? []).map(d => d.label || d.formula).filter(Boolean).join(", ")
+  },
+
+  // dnd5e's "16 AC" — the equivalent question for something worn rather than
+  // swung, and very often the only fact a suit of armour has to offer.
+  { key: "armor", label: "PHONEDRY.Describe.ArmourClass" },
+
   { key: "range", label: "PHONEDRY.Describe.Range" },
   { key: "target", label: "PHONEDRY.Describe.Target" },
   { key: "duration", label: "PHONEDRY.Describe.Duration" }
@@ -76,8 +99,8 @@ const FACTS = [
  */
 export function buildFacts(labels = {}) {
   const facts = FACTS
-    .filter(({ key }) => labels[key])
-    .map(({ key, label }) => ({ label, value: labels[key] }));
+    .map(({ key, label, from }) => ({ label, value: from ? from(labels) : labels[key] }))
+    .filter(fact => fact.value);
 
   // Components are a spell's alone, and the material list belongs with them
   // rather than as a fact of its own — "V, S, M (a holy symbol)" is how the
@@ -95,6 +118,26 @@ export function buildFacts(labels = {}) {
   // rather than leaving to be inferred from the description.
   if ( labels.components?.tags?.length ) {
     facts.push({ label: "PHONEDRY.Describe.Tags", value: labels.components.tags.join(", ") });
+  }
+
+  /*
+   * An item's properties — Finesse, Loading, Two-Handed, Stealth Disadvantage.
+   *
+   * These change how a thing is used as much as anything else on the panel, and
+   * for a mundane weapon or a suit of armour they are frequently the only thing
+   * on it: dnd5e ships chain mail and a mace with no description text at all,
+   * so without this, holding one gives a name and a blank.
+   *
+   * Guarded on there being no components rather than on the item's type. A
+   * spell reports its concentration and ritual through `components.tags` just
+   * above, and dnd5e also lists them in `properties` — so an unguarded fact
+   * would state the same thing twice on every spell.
+   */
+  if ( !labels.components && labels.properties?.length ) {
+    facts.push({
+      label: "PHONEDRY.Describe.Properties",
+      value: labels.properties.map(p => p.label ?? p).filter(Boolean).join(", ")
+    });
   }
 
   return facts;
@@ -149,6 +192,19 @@ export async function describeDocument(doc) {
     // asked before reading a word of the description, and previously only
     // answerable by reading all of it.
     facts: buildFacts(labels),
+
+    /*
+     * Whether there was anything written to begin with.
+     *
+     * Tested against the source rather than the enriched output, because that
+     * is the honest question: enrichment turns an empty string into an empty
+     * string, and a panel that renders an empty box leaves the player
+     * wondering whether the description failed to load. Plenty of dnd5e's own
+     * items have none — chain mail and a mace both arrive blank — so this is
+     * the ordinary case rather than an error, and the facts above are then
+     * carrying the whole panel.
+     */
+    hasText: source.trim().length > 0,
 
     html
   };

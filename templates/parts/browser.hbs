@@ -1,0 +1,98 @@
+{{!--
+  Adding things from the compendium — spells on the spells screen, gear on the
+  inventory screen.
+
+  One panel for both. The two differ in where their entries come from and in
+  what a row's second line says, and in nothing else: the same search field, the
+  same debounce, the same result cap, the same hold-to-read. A second copy of
+  this would be a second set of those behaviours to keep in step.
+
+  A full-screen panel of Phonedry's own rather than Foundry's compendium
+  browser, which is a desktop application with filters down one side — and one
+  of the dialogs that renders badly in WebKit.
+
+  Search first. A cleric's spell list is 226 entries and the gear packs hold
+  over two thousand between them; scrolling either on a phone is not a way to
+  find anything.
+
+  CONSTRAINT: exactly one top-level element. See the note in header.hbs.
+--}}
+<div class="phonedry-browser" {{#unless browser.open}}hidden{{/unless}}>
+
+  <div class="phonedry-browser__bar">
+    <input type="text" class="phonedry-browser__search" name="browserSearch"
+           value="{{browser.query}}" placeholder="{{localize browser.placeholder}}"
+           autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+           aria-label="{{localize browser.searchLabel}}" />
+    <button type="button" class="phonedry-browser__close" data-action="closeBrowser"
+            aria-label="{{localize 'PHONEDRY.Compendium.Close'}}">&times;</button>
+  </div>
+
+  {{!-- Sorting by anything but name is only possible because the boot path asks
+        Foundry to carry those fields in its compendium index. --}}
+  <div class="phonedry-browser__sorts" role="group"
+       aria-label="{{localize browser.sortLabel}}">
+    {{#each browser.sorts}}
+      <button type="button" class="phonedry-browser__sort" data-action="setBrowserSort"
+              data-sort="{{this.id}}" aria-pressed="{{#if this.active}}true{{else}}false{{/if}}">
+        {{localize this.label}}
+      </button>
+    {{/each}}
+  </div>
+
+  {{!-- Said in words, because a hold is invisible until someone tries it — and
+        reading something before committing to it is the whole reason to hold
+        one here. --}}
+  <p class="phonedry-browser__hint">{{localize browser.hint}}</p>
+
+  {{#if browser.results.length}}
+    <ul class="phonedry-browser__results">
+      {{#each browser.results}}
+        <li>
+          {{!-- One action for both browsers. Which of them is open is the
+                shell's business rather than the row's — a row only knows it is
+                the thing that was tapped. --}}
+          {{!-- The level rides along as data only for the smoke test, which
+                checks that ordering by level really orders by level. The row
+                shows "1st Level" as words, and reading a number back out of
+                that is not a check worth writing. Absent on gear. --}}
+          <button type="button" class="phonedry-browser__result"
+                  data-action="addFromBrowser" data-uuid="{{this.uuid}}"
+                  data-describe-uuid="{{this.uuid}}"
+                  {{#if this.levelLabel}}data-level="{{this.level}}"{{/if}}
+                  {{#if this.owned}}disabled{{/if}}>
+            <img class="phonedry-browser__icon" src="{{this.img}}" alt="" />
+            <span class="phonedry-browser__text">
+              <span class="phonedry-browser__name">{{this.name}}</span>
+              {{!-- Composed by the mapper rather than assembled here, because
+                    the two browsers have entirely different things to say and a
+                    finished string is the only shape they agree on. --}}
+              {{#if this.meta}}<span class="phonedry-browser__meta">{{this.meta}}</span>{{/if}}
+            </span>
+            {{#if this.owned}}
+              <span class="phonedry-browser__owned">{{localize "PHONEDRY.Spells.AlreadyKnown"}}</span>
+            {{/if}}
+          </button>
+        </li>
+      {{/each}}
+    </ul>
+
+    {{#if browser.truncated}}
+      {{!-- Says how many were left out rather than silently showing the first
+            page, so a player knows to narrow the search rather than assuming
+            what they want is missing. --}}
+      <p class="phonedry-browser__note">
+        {{localize "PHONEDRY.Compendium.MoreResults" shown=browser.results.length total=browser.total}}
+      </p>
+    {{/if}}
+  {{else}}
+    <p class="phonedry-browser__note">
+      {{#if browser.query}}
+        {{localize "PHONEDRY.Compendium.NoMatches"}}
+      {{else}}
+        {{localize browser.emptyBody}}
+      {{/if}}
+    </p>
+  {{/if}}
+
+</div>

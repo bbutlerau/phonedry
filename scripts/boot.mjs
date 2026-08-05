@@ -197,7 +197,7 @@ export function registerIndexFields() {
   const fields = CONFIG.Item?.compendiumIndexFields;
   if ( !fields ) return;
 
-  for ( const field of ["system.level", "system.school"] ) {
+  for ( const field of ["system.level", "system.school", "system.rarity"] ) {
     if ( !fields.includes(field) ) fields.push(field);
   }
 }

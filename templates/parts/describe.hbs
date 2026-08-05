@@ -67,8 +67,19 @@
       {{/if}}
 
       {{!-- Enriched by Foundry before it reaches here, so inline rolls and
-            references read as text rather than as markup. --}}
-      <div class="phonedry-describe__body">{{{describe.html}}}</div>
+            references read as text rather than as markup.
+
+            Plenty of items carry no description at all — dnd5e ships chain mail
+            and a mace blank — and an empty box reads as the panel having failed
+            rather than as there being nothing to say. The facts above are then
+            the whole of the answer, so this says so and gets out of the way. --}}
+      {{#if describe.hasText}}
+        <div class="phonedry-describe__body">{{{describe.html}}}</div>
+      {{else}}
+        <p class="phonedry-describe__body phonedry-describe__body--empty">
+          {{localize "PHONEDRY.Describe.NoText"}}
+        </p>
+      {{/if}}
     </div>
   {{/if}}
 </div>

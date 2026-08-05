@@ -17,7 +17,9 @@ import { buildStatsView } from "../data/stats.mjs";
 import { buildSpellsView } from "../data/spells.mjs";
 import { buildActionsView } from "../data/actions.mjs";
 import { buildConditionsView } from "../data/conditions.mjs";
+import { buildInventoryView } from "../data/inventory.mjs";
 import { setCondition, setEffectDisabled, setExhaustion } from "../conditions.mjs";
+import { setAttuned, setEquipped } from "../inventory.mjs";
 import { takeRest } from "../rest.mjs";
 import { useActivity } from "../actions.mjs";
 import { castSpell, setPrepared } from "../spells.mjs";
@@ -25,6 +27,8 @@ import { buildTargetsView, needsTargets } from "../data/targets.mjs";
 import { broadcastTargets, collectCandidates, targetDescriptors } from "../targets.mjs";
 import { addSpell, getAvailableSpells, ownedSpellIds } from "../spell-browser.mjs";
 import { searchSpells, SORTS } from "../data/spell-browser.mjs";
+import { addItem, getAvailableItems } from "../item-browser.mjs";
+import { searchItems, ITEM_SORTS } from "../data/item-browser.mjs";
 import {
   ROLL_MODE, rollAbilityCheck, rollSavingThrow, rollSkill,
   rollDeathSave, rollInitiative, rollTypedCommand
@@ -46,7 +50,7 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       positioned: false
     },
     actions: {
-      addSpell: PhonedryShell.#onAddSpell,
+      addFromBrowser: PhonedryShell.#onAddFromBrowser,
       applyHp: PhonedryShell.#onApplyHp,
       castSpell: PhonedryShell.#onCastSpell,
       rest: PhonedryShell.#onRest,
@@ -54,14 +58,17 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       rollTyped: PhonedryShell.#onRollTyped,
       rollInitiative: PhonedryShell.#onRollInitiative,
       closeDescription: PhonedryShell.#onCloseDescription,
+      describeItem: PhonedryShell.#onDescribeItem,
+      toggleEquipped: PhonedryShell.#onToggleEquipped,
+      toggleAttuned: PhonedryShell.#onToggleAttuned,
       logOut: PhonedryShell.#onLogOut,
-      closeSpellBrowser: PhonedryShell.#onCloseSpellBrowser,
+      closeBrowser: PhonedryShell.#onCloseBrowser,
       closeTargets: PhonedryShell.#onCloseTargets,
       confirmTargets: PhonedryShell.#onConfirmTargets,
       toggleTarget: PhonedryShell.#onToggleTarget,
-      openSpellBrowser: PhonedryShell.#onOpenSpellBrowser,
+      openBrowser: PhonedryShell.#onOpenBrowser,
       setRollMode: PhonedryShell.#onSetRollMode,
-      setSpellSort: PhonedryShell.#onSetSpellSort,
+      setBrowserSort: PhonedryShell.#onSetBrowserSort,
       setTab: PhonedryShell.#onSetTab,
       stepExhaustion: PhonedryShell.#onStepExhaustion,
       toggleCondition: PhonedryShell.#onToggleCondition,
@@ -118,7 +125,7 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
     // Same again for the results list, which re-renders on every keystroke and
     // whenever a spell is added from it.
     browser: {
-      template: `modules/${MODULE_ID}/templates/parts/spell-browser.hbs`,
+      template: `modules/${MODULE_ID}/templates/parts/browser.hbs`,
       scrollable: [".phonedry-browser__results"]
     },
 
@@ -207,14 +214,35 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   /** Whether the roll history is expanded. @type {boolean} */
   #rollLogOpen = false;
 
-  /** Whether the spell browser is showing. @type {boolean} */
-  #browserOpen = false;
+  /**
+   * Which compendium browser is open, or null when none is.
+   *
+   * One panel serves both — spells from the spells screen, gear from the
+   * inventory screen — because they differ only in where their entries come
+   * from and what a row says. A second copy would be a second search field,
+   * debounce, result cap and focus dance to keep in step with this one.
+   *
+   * @type {"spells"|"items"|null}
+   */
+  #browserMode = null;
 
-  /** What is typed in the spell search field. @type {string} */
+  /** The open browser. Exposed for the smoke tests and the console. */
+  get browserMode() {
+    return this.#browserMode;
+  }
+
+  /** What is typed in the search field. @type {string} */
   #browserQuery = "";
 
-  /** How the browser's results are ordered. @type {string} */
-  #browserSort = SORTS.NAME;
+  /**
+   * How each browser's results are ordered, kept per browser.
+   *
+   * Shared state would mean opening the gear browser after sorting spells by
+   * level left it on an order it does not have.
+   *
+   * @type {Record<string, string>}
+   */
+  #browserSort = { spells: SORTS.NAME, items: ITEM_SORTS.NAME };
 
   /**
    * The description panel's contents, or null when it is closed.
@@ -254,15 +282,17 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   #unbindLongPress = null;
 
   /**
-   * Compendium index entries for every spell this character can learn.
+   * Compendium index entries, per browser.
    *
-   * Read once when the browser is first opened and kept for the session. The
-   * indexes themselves are dnd5e's and already in memory, so this is only
-   * avoiding the work of walking the registry on every keystroke.
+   * Read once when a browser is first opened and kept for the session. The
+   * indexes themselves are Foundry's and already in memory, so this is only
+   * avoiding the work of walking the registry or the pack list on every
+   * keystroke — which matters more for gear, where that walk covers over two
+   * thousand entries across five packs.
    *
-   * @type {object[]|null}
+   * @type {Record<string, object[]|null>}
    */
-  #browserEntries = null;
+  #browserEntries = { spells: null, items: null };
 
   /**
    * What is currently typed in the formula field.
@@ -340,7 +370,7 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
    * be mirrored above before this runs.
    */
   #searchDebounced = foundry.utils.debounce(() => {
-    if ( !this.#browserOpen ) return;
+    if ( !this.#browserMode ) return;
 
     const field = this.element.querySelector(".phonedry-browser__search");
     const start = field?.selectionStart;
@@ -473,6 +503,11 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       // which must stay free of Foundry globals to be unit-testable.
       actions: actor ? buildActionsView(actor, CONFIG.DND5E, CONFIG.Item.typeLabels) : null,
 
+      // Same reasoning as the actions view for the type labels, and the same
+      // reason for handing in the config: the mapper stays free of Foundry
+      // globals so it can be unit-tested against plain objects.
+      items: actor ? buildInventoryView(actor, CONFIG.DND5E, CONFIG.Item.typeLabels) : null,
+
       // `allApplicableEffects` is dnd5e's own reckoning of what is currently
       // applying, and it reaches effects living on the character's items as
       // well as on the character — which is where a Rage or a Divine Order
@@ -513,35 +548,105 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
-   * The spell browser's context.
+   * Everything that differs between the two compendium browsers.
    *
-   * Search runs here rather than in the template because it is a filter over a
-   * few hundred entries, and Handlebars is the wrong place for that.
+   * Collected in one place so the difference between them is a table to read
+   * rather than a set of branches scattered through the shell. `search` is the
+   * only entry doing real work; the rest are wording and a source of entries.
+   *
+   * @type {Record<string, object>}
+   */
+  static #BROWSERS = {
+    spells: {
+      placeholder: "PHONEDRY.Spells.SearchPlaceholder",
+      searchLabel: "PHONEDRY.Spells.SearchLabel",
+      sortLabel: "PHONEDRY.Spells.SortLabel",
+      hint: "PHONEDRY.Describe.HintBrowser",
+      emptyBody: "PHONEDRY.Spells.NoList",
+      sorts: [
+        { id: SORTS.NAME, label: "PHONEDRY.Spells.SortName" },
+        { id: SORTS.LEVEL, label: "PHONEDRY.Spells.SortLevel" },
+        { id: SORTS.SCHOOL, label: "PHONEDRY.Spells.SortSchool" }
+      ],
+      entries: actor => getAvailableSpells(actor),
+      add: (actor, uuid) => addSpell(actor, uuid),
+      search: (entries, query, sort, actor) => searchSpells(entries, {
+        query, sort,
+        owned: ownedSpellIds(actor),
+        labels: { levels: CONFIG.DND5E.spellLevels, schools: CONFIG.DND5E.spellSchools }
+      })
+    },
+
+    items: {
+      placeholder: "PHONEDRY.Items.SearchPlaceholder",
+      searchLabel: "PHONEDRY.Items.SearchLabel",
+      sortLabel: "PHONEDRY.Items.SortLabel",
+      hint: "PHONEDRY.Describe.HintItemBrowser",
+      emptyBody: "PHONEDRY.Items.NoPacks",
+      sorts: [
+        { id: ITEM_SORTS.NAME, label: "PHONEDRY.Items.SortName" },
+        { id: ITEM_SORTS.TYPE, label: "PHONEDRY.Items.SortType" }
+      ],
+      entries: () => getAvailableItems(),
+      add: (actor, uuid) => addItem(actor, uuid),
+
+      /*
+       * Rarities arrive from dnd5e already localised, because it runs them
+       * through its own `preLocalize`. Core's item type names do not — they are
+       * still keys like "TYPES.Item.equipment" — so they are localised here.
+       *
+       * It has to happen on this side of the call. The mapper composes the
+       * row's second line into a finished string, and it must stay free of
+       * Foundry globals to be unit-testable, so it cannot do the lookup itself.
+       */
+      search: (entries, query, sort) => searchItems(entries, {
+        query, sort,
+        labels: {
+          types: Object.fromEntries(Object.entries(CONFIG.Item.typeLabels)
+            .map(([type, label]) => [type, game.i18n.localize(label)])),
+          rarities: CONFIG.DND5E.itemRarity
+        }
+      })
+    }
+  };
+
+  /**
+   * The open browser's context.
+   *
+   * Search runs here rather than in the template because it is a filter over up
+   * to a couple of thousand entries, and Handlebars is the wrong place for that.
    *
    * @param {Actor|null} actor
    * @returns {object}
    */
   #prepareBrowser(actor) {
-    const sorts = [
-      { id: SORTS.NAME, label: "PHONEDRY.Spells.SortName" },
-      { id: SORTS.LEVEL, label: "PHONEDRY.Spells.SortLevel" },
-      { id: SORTS.SCHOOL, label: "PHONEDRY.Spells.SortSchool" }
-    ].map(sort => ({ ...sort, active: sort.id === this.#browserSort }));
+    // Closed, but the part still renders — hidden by an attribute rather than
+    // by being absent, so opening it is a re-render of one part rather than a
+    // structural change. The spells browser's wording is the fallback simply
+    // because something has to be, and nothing is visible either way.
+    const mode = this.#browserMode ?? "spells";
+    const config = PhonedryShell.#BROWSERS[mode];
+    const sort = this.#browserSort[mode];
 
-    if ( !this.#browserOpen || !actor ) {
-      return {
-        open: false, query: this.#browserQuery, sorts, results: [], total: 0, truncated: false
-      };
+    const chrome = {
+      placeholder: config.placeholder,
+      searchLabel: config.searchLabel,
+      sortLabel: config.sortLabel,
+      hint: config.hint,
+      emptyBody: config.emptyBody,
+      query: this.#browserQuery,
+      sorts: config.sorts.map(s => ({ ...s, active: s.id === sort }))
+    };
+
+    if ( !this.#browserMode || !actor ) {
+      return { ...chrome, open: false, results: [], total: 0, truncated: false };
     }
 
-    const search = searchSpells(this.#browserEntries ?? [], {
-      query: this.#browserQuery,
-      owned: ownedSpellIds(actor),
-      sort: this.#browserSort,
-      labels: { levels: CONFIG.DND5E.spellLevels, schools: CONFIG.DND5E.spellSchools }
-    });
-
-    return { open: true, query: this.#browserQuery, sorts, ...search };
+    return {
+      ...chrome,
+      open: true,
+      ...config.search(this.#browserEntries[mode] ?? [], this.#browserQuery, sort, actor)
+    };
   }
 
   /* -------------------------------------------- */
@@ -1013,6 +1118,54 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
+   * Equip or stow an item.
+   *
+   * No re-render here: the write goes to the item, and `updateItem` is already
+   * one of the hooks the sheet refreshes on — so equipping a shield rebuilds
+   * both this row and the armour class in the header, which is the point.
+   *
+   * @this {PhonedryShell}
+   */
+  static #onToggleEquipped(event, target) {
+    const item = this.actor?.items.get(target.dataset.itemId);
+    if ( item ) setEquipped(item, target.getAttribute("aria-pressed") !== "true");
+  }
+
+  /**
+   * Attune to an item, or let the attunement go.
+   *
+   * @this {PhonedryShell}
+   */
+  static #onToggleAttuned(event, target) {
+    const item = this.actor?.items.get(target.dataset.itemId);
+    if ( item ) setAttuned(item, target.getAttribute("aria-pressed") !== "true");
+  }
+
+  /**
+   * Read what an item is.
+   *
+   * The inventory screen is the one place where reading is the row's primary
+   * action rather than a secondary gesture: using an item lives on the actions
+   * screen and equipping has its own control, so nothing else competes for the
+   * tap. The hold still works — the row carries `data-describe` as well — which
+   * is what makes the gesture learned on the spells screen keep working here.
+   *
+   * @this {PhonedryShell}
+   */
+  static async #onDescribeItem(event, target) {
+    const item = this.actor?.items.get(target.dataset.itemId);
+    if ( !item ) return;
+
+    this.#describe = await describeDocument(item);
+
+    // A fresh tap starts a new trail rather than extending whatever chain of
+    // links was followed the last time the panel was open.
+    this.#describeStack = [];
+
+    this.render({ parts: ["describe"] });
+  }
+
+  /**
    * Prepare or unprepare a spell.
    *
    * @this {PhonedryShell}
@@ -1023,24 +1176,31 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
-   * Show or hide the roll history.
+   * Open a compendium browser.
    *
-   * Re-rendered rather than toggled in the DOM, because the bar itself changes
-   * with the state: it shows the most recent roll while collapsed and a heading
-   * while open, so that the list underneath does not repeat it. Only the log
-   * part is rebuilt.
+   * Which one comes off the button, so the spells screen and the inventory
+   * screen share one control and one panel.
    *
    * @this {PhonedryShell}
    */
-  static #onOpenSpellBrowser() {
+  static #onOpenBrowser(event, target) {
     if ( !this.actor ) return;
 
-    // Read once per session. Walking the registry is cheap, but not cheap
-    // enough to repeat on every keystroke.
-    this.#browserEntries ??= getAvailableSpells(this.actor);
+    const mode = target.dataset.browser;
+    if ( !PhonedryShell.#BROWSERS[mode] ) return;
 
-    this.#browserOpen = true;
+    // Read once per session. Walking the spell registry is cheap; walking five
+    // compendium indexes for gear is not cheap enough to repeat on every
+    // keystroke.
+    this.#browserEntries[mode] ??= PhonedryShell.#BROWSERS[mode].entries(this.actor);
+
+    this.#browserMode = mode;
+
+    // A fresh search each time. Reopening on the last query would show results
+    // for something the player was looking for on a different occasion, and the
+    // field would need clearing before it could be used.
     this.#browserQuery = "";
+
     this.render({ parts: ["browser"] });
     this.#resetScroll(".phonedry-browser__results");
 
@@ -1093,44 +1253,47 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
-   * Order the browser's results.
+   * Order the open browser's results.
    *
    * @this {PhonedryShell}
    */
-  static async #onSetSpellSort(event, target) {
-    this.#browserSort = target.dataset.sort;
+  static async #onSetBrowserSort(event, target) {
+    if ( !this.#browserMode ) return;
+
+    this.#browserSort[this.#browserMode] = target.dataset.sort;
     await this.render({ parts: ["browser"] });
 
-    // Reordering puts different spells under the same scroll position, so the
+    // Reordering puts different rows under the same scroll position, so the
     // player would land in the middle of a list they have not seen the top of.
     this.#resetScroll(".phonedry-browser__results");
   }
 
   /**
-   * Close the spell browser.
+   * Close whichever browser is open.
    *
    * @this {PhonedryShell}
    */
-  static #onCloseSpellBrowser() {
-    this.#browserOpen = false;
+  static #onCloseBrowser() {
+    this.#browserMode = null;
     this.render({ parts: ["browser"] });
   }
 
   /**
-   * Add the tapped spell to the character.
+   * Add the tapped row to the character.
    *
-   * The browser stays open: adding spells is something done in a run, at level
-   * up or after a long rest, and closing after each one would mean reopening
-   * and retyping.
+   * The browser stays open: adding is something done in a run — spells at level
+   * up, gear after a shopping trip — and closing after each one would mean
+   * reopening and retyping.
    *
    * @this {PhonedryShell}
    */
-  static async #onAddSpell(event, target) {
-    if ( !this.actor ) return;
-    await addSpell(this.actor, target.dataset.uuid);
+  static async #onAddFromBrowser(event, target) {
+    if ( !this.actor || !this.#browserMode ) return;
 
-    // The spell list behind the browser is now stale, and so is the browser's
-    // own "already known" marking.
+    await PhonedryShell.#BROWSERS[this.#browserMode].add(this.actor, target.dataset.uuid);
+
+    // The list behind the browser is now stale, and for spells so is the
+    // browser's own "already known" marking.
     this.render({ parts: ["content", "browser"] });
   }
 

@@ -294,7 +294,11 @@ Verify your own work as part of finishing a task rather than waiting to be told.
 No need to narrate every check. Say plainly if something didn't work or you're
 unsure.
 
-Run the tests before calling a milestone done:
+**Run the full suites before a commit, not after every change.** They take
+minutes, and Brad can check the same thing on his phone faster than Playwright
+can join a world. During a piece of work, run `npm run test:unit` — it is
+instant — and the one smoke test covering what changed. Save `npm test` and
+`npm run test:webkit` for the point where the work is about to be committed.
 
 ```bash
 npm test           # unit + Chromium smoke tests; ~2 minutes
@@ -304,10 +308,16 @@ npm run test:all   # everything, both engines; ~6 minutes
 ```
 
 WebKit is deliberately not in the default run. It roughly doubles the time, and
-a dev loop that takes six minutes stops being run. Use it before calling a
-milestone done, and any time the change is to layout, gestures, input handling
-or anything touching a Foundry dialog — those are the areas where the two
-engines have actually disagreed.
+a dev loop that takes six minutes stops being run. Use it at commit time, and
+any time the change is to layout, gestures, input handling or anything touching
+a Foundry dialog — those are the areas where the two engines have actually
+disagreed.
+
+Also worth remembering: a smoke test running a whole suite can break on a change
+that has nothing to do with it. Adding a tab broke an assertion pinning the
+exact contents of the tab bar. That is the test doing its job, not a
+regression — but it is a reason the full run belongs at commit time, where
+there is a moment to read what it says.
 
 Smoke tests are expensive: each one joins a world, and that is most of its
 eight seconds. Prefer adding assertions to an existing test over adding a new

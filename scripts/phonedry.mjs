@@ -32,6 +32,17 @@ let shell = null;
  */
 let active = false;
 
+/**
+ * Template fragments shared between tab bodies, registered as partials.
+ *
+ * The equip toggle appears both on an inventory row and in the heading of a
+ * container, and the two write the same field — sharing the markup is what keeps
+ * them from drifting apart.
+ *
+ * @type {string[]}
+ */
+const SHARED_PARTIALS = ["item-equip"];
+
 /* -------------------------------------------- */
 
 /**
@@ -47,9 +58,14 @@ Hooks.once("init", () => {
   // has already been registered, and `loadTemplates` is what registers one
   // under its path — so this has to happen before the first render, not on
   // demand when a tab is opened.
-  foundry.applications.handlebars.loadTemplates(
-    TABS.map(tab => `modules/${MODULE_ID}/templates/tabs/${tab.id}.hbs`)
-  );
+  foundry.applications.handlebars.loadTemplates([
+    ...TABS.map(tab => `modules/${MODULE_ID}/templates/tabs/${tab.id}.hbs`),
+
+    // Fragments a tab body includes by name. Unlike the tab bodies these are not
+    // derivable from a list, so they are named here — and they need the same
+    // registration for the same reason.
+    ...SHARED_PARTIALS.map(name => `modules/${MODULE_ID}/templates/parts/${name}.hbs`)
+  ]);
 });
 
 /* -------------------------------------------- */

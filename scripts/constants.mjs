@@ -48,6 +48,12 @@ export const TABS = [
 
   { id: "spells", label: "PHONEDRY.Tabs.Spells", icon: "fa-book-sparkles" },
 
+  // After the two screens a fight uses every round, because a pack is opened
+  // between fights more often than during one — but before status, because
+  // drawing a different weapon is something done mid-combat and the actions
+  // screen has no way to do it.
+  { id: "items", label: "PHONEDRY.Tabs.Items", icon: "fa-backpack" },
+
   // Last, because it is the one consulted rather than acted from. Conditions
   // are set once when something happens and then read for the rest of a fight.
   { id: "conditions", label: "PHONEDRY.Tabs.Conditions", icon: "fa-heart-pulse" }

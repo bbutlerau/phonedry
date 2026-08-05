@@ -25,7 +25,7 @@ test.describe("spells", () => {
     // when there is a spell to cast.
     expect(await page.locator(".phonedry-tabs__tab").evaluateAll(
       els => els.map(el => el.dataset.tab)
-    )).toEqual(["stats", "actions", "spells", "conditions"]);
+    )).toEqual(["stats", "actions", "spells", "items", "conditions"]);
 
     // Stats is where a session starts, and the bar says so.
     await expect(page.locator('.phonedry-tabs__tab[data-tab="stats"]')).toHaveAttribute("aria-current", "page");
@@ -122,7 +122,7 @@ test.describe("spells", () => {
     });
 
     await page.locator('.phonedry-tabs__tab[data-tab="spells"]').click();
-    await page.locator("[data-action='openSpellBrowser']").click();
+    await page.locator("[data-action='openBrowser'][data-browser='spells']").click();
     await expect(page.locator(".phonedry-browser")).toBeVisible();
 
     // Opening must not stall. The obvious implementation asks the compendium
@@ -165,7 +165,7 @@ test.describe("spells", () => {
 
     // The point of the gesture here: the spell is not on the character yet, so
     // the panel has to resolve a compendium uuid rather than an owned item.
-    await longPress(page, page.locator("[data-action='addSpell']").first());
+    await longPress(page, page.locator("[data-action='addFromBrowser']").first());
     await expect(page.locator(".phonedry-describe__name")).toHaveText("Inflict Wounds");
     await expect(page.locator(".phonedry-describe__body")).not.toBeEmpty();
 
@@ -179,7 +179,7 @@ test.describe("spells", () => {
     ), "holding a result added the spell").toBe(false);
 
     await page.locator(".phonedry-describe__close").click();
-    await page.locator("[data-action='addSpell']").first().click();
+    await page.locator("[data-action='addFromBrowser']").first().click();
 
     // The document is what must change. It also has to arrive with its
     // compendium source recorded, which is what lets the sheet say later where
@@ -193,9 +193,9 @@ test.describe("spells", () => {
     ).toBe(true);
 
     // And it is now marked as known rather than offered again.
-    await expect(page.locator("[data-action='addSpell']").first()).toBeDisabled();
+    await expect(page.locator("[data-action='addFromBrowser']").first()).toBeDisabled();
 
-    await page.locator("[data-action='closeSpellBrowser']").click();
+    await page.locator("[data-action='closeBrowser']").click();
     await expect(page.locator(".phonedry-browser")).toBeHidden();
 
     // Tidy up, so the suite can be run repeatedly.
@@ -307,6 +307,22 @@ test.describe("spells", () => {
     // a different path than this test is about.
     const inCombat = await page.evaluate(() => !!game.combats.active?.combatants.size);
     test.skip(!inCombat, "no active encounter in the test world");
+
+    /*
+     * Give the slot back before spending it.
+     *
+     * This test casts Bless, and the cleric has four first-level slots. Nothing
+     * gives them back — no long rest runs between suite runs — so the fourth
+     * run of the day found the character out of slots, dnd5e correctly refused
+     * the cast, no card was posted, and the failure pointed at targeting rather
+     * than at an empty spell book. The world is also the one Brad tests on by
+     * hand, which drains them faster still.
+     */
+    await page.evaluate(() => {
+      const actor = game.modules.get("phonedry").api.shell.actor;
+      const { max } = actor.system.spells.spell1;
+      return actor.update({ "system.spells.spell1.value": max });
+    });
 
     /* --- a template spell casts straight through --- */
 

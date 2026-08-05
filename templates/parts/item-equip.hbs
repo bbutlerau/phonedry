@@ -1,0 +1,25 @@
+{{!--
+  The equip toggle.
+
+  A partial rather than written twice, because it appears both on an ordinary
+  row and in the heading of a container — a backpack is worn, so it can be taken
+  off, and it has no row of its own to carry the control. The two must stay
+  identical: they write the same field, and a drift in `aria-pressed` between
+  them would be a toggle that reads its own state wrongly in one place.
+
+  Expects `entry` to be an item row from the inventory mapper.
+
+  Items that cannot be equipped keep the column as an empty space rather than
+  getting a disabled control, exactly as the spells screen does for a spell that
+  cannot be prepared. On a phone there is no tooltip to explain a dead button.
+--}}
+{{#if entry.equippable}}
+  <button type="button" class="phonedry-item__equip"
+          data-action="toggleEquipped" data-item-id="{{entry.id}}"
+          aria-pressed="{{#if entry.equipped}}true{{else}}false{{/if}}"
+          aria-label="{{localize 'PHONEDRY.Items.EquipAria' name=entry.name}}">
+    <span class="phonedry-pip {{#if entry.equipped}}phonedry-prof--proficient{{/if}}"></span>
+  </button>
+{{else}}
+  <span class="phonedry-item__equip phonedry-item__equip--fixed" aria-hidden="true"></span>
+{{/if}}

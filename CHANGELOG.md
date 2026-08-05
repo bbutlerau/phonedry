@@ -222,6 +222,17 @@ All notable changes to Phonedry are recorded here. Versions follow
   It applies to more than spells — a feature and a weapon carry the same
   labels, so holding either answers the same questions — and rows with nothing
   to say are left out rather than shown blank.
+
+  Weapons add their attack bonus and damage, armour its armour class, and both
+  their properties — Finesse, Loading, Stealth Disadvantage. Damage carries its
+  type here, unlike on an action row: the actions screen shows the bare formula
+  because "1d10 + 3 Piercing" does not fit a phone row, while a panel has the
+  width and resistance is exactly what someone opens one to check.
+
+  This matters more than it sounds. dnd5e ships chain mail, a mace and a pistol
+  with no description text at all, so holding one previously gave a name and an
+  empty box. Where there genuinely is nothing written, the panel now says so
+  rather than showing a blank that reads as a failure to load.
 - Holding an action shows what it does, as on the spells screen. dnd5e gives an
   activity no description of its own, so this is the item's rules text — which
   is the useful thing to read anyway.
@@ -230,6 +241,60 @@ All notable changes to Phonedry are recorded here. Versions follow
   wants mid-session is what the skill is *for* rather than how its number was
   arrived at. Skills whose rule page is not installed simply offer no hold,
   rather than a hold that opens nothing and swallows the roll.
+- Inventory screen, between spells and status: everything the character is
+  carrying, with an equip toggle on every row that has one.
+
+  Equipping is why the screen exists. The actions screen lists weapons and
+  equipment only while they are equipped, so before this a player who drew a
+  different weapon mid-fight had no way to make it appear — the sheet showed
+  them what they could do and offered no way to change it.
+
+  Belongings are grouped by *where they are* rather than by what kind of thing
+  they are. A character carrying two lamps, one in hand and one at the bottom
+  of the pack, gets two rows either way; grouped by type they are an
+  unexplained duplicate, and grouped by container they are two obvious facts. A
+  container heads its own group and carries its own equip toggle and the weight
+  of everything inside it, rather than also appearing as a row somewhere else
+  under the same name.
+
+  Rows carry the same coloured stripe and kind label as the actions screen, so
+  a weapon in one place looks like the same claim as a weapon in the other.
+  Tapping a row reads it — nothing else competes for the tap, since using an
+  item lives on the actions screen — and holding one does the same, so the
+  gesture learned on the spells screen keeps working.
+
+  Above the list: carried weight against capacity, the purse, and how many
+  attunements are in use. Only exceeding carrying capacity is marked. dnd5e
+  knows two thresholds below it, but both belong to an optional variant rule,
+  and colouring a sheet for a rule the table may not be playing would tell the
+  player something untrue.
+
+- Gear can be added from the compendium, the same way spells already could. An
+  "Add gear" button on the inventory screen opens a search over every item
+  compendium the world has — dnd5e's own packs plus whatever modules are
+  installed — and a tap adds it. Holding a result reads it before committing.
+
+  One panel serves both browsers rather than two near-copies. They differ in
+  where their entries come from and in what a row's second line says, and in
+  nothing else: the same search field, debounce, result cap and hold-to-read.
+
+  Two things are different for gear, both deliberate. Nothing is marked as
+  already owned — a character can perfectly well carry a second rope and a
+  third torch, so refusing a duplicate would refuse the most ordinary use of
+  the screen. And results are deduplicated by *name* as well as by identifier:
+  gear is published under both rules versions and again by the Player's
+  Handbook and Dungeon Master's Guide modules, so a search for "chain mail"
+  otherwise returned the same armour four times with nothing to choose between.
+
+  Only compendia the player can actually see are searched. A GM's private
+  homebrew pack is hidden from players in Foundry's own sidebar, and a phone
+  client that listed its contents anyway would be handing out something the GM
+  chose to keep back.
+
+- Attunement can be toggled from an item's row, where the item has anything to
+  say about attunement. It is counted rather than enforced: dnd5e counts
+  attunements and leaves the ruling to the table, and a sheet that refused the
+  tap would be enforcing a rule the system does not, from a phone, mid-session.
 - Unit tests for the actor-to-view-model mappers. These need no Foundry, no
   browser and no world, so unlike the smoke tests they can run in CI.
 

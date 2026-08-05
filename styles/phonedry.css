@@ -1505,6 +1505,306 @@
 }
 
 /* -------------------------------------------- */
+/*  Inventory                                   */
+/* -------------------------------------------- */
+
+/*
+ * What the pack costs and what is in the purse, in one strip above the pack.
+ *
+ * Both are questions asked before deciding what to pick up or put down, so they
+ * go where they are read rather than at the bottom where the totals of a
+ * spreadsheet would live.
+ */
+.phonedry-active .phonedry-carry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--phonedry-gap-sm);
+}
+
+.phonedry-active .phonedry-carry__load {
+  display: flex;
+  align-items: center;
+  gap: var(--phonedry-gap-md);
+}
+
+/* The bar is the fast read; the number beside it is the exact one. Same pairing
+   as the hit point strip, and the same reasoning — a bar answers "am I near the
+   limit" without being read, which is the question asked most often. */
+.phonedry-active .phonedry-carry__bar {
+  position: relative;
+  flex: 1;
+  height: 0.375rem;
+  border-radius: 0.1875rem;
+  background: var(--phonedry-surface);
+  overflow: hidden;
+}
+
+.phonedry-active .phonedry-carry__fill {
+  display: block;
+  height: 100%;
+  background: var(--phonedry-muted);
+  transition: width 200ms ease-out;
+}
+
+/*
+ * Only exceeding carrying capacity is marked. dnd5e knows two thresholds below
+ * this one, but both belong to an optional variant rule — colouring a sheet for
+ * a rule the table may not be playing would tell the player something untrue.
+ */
+.phonedry-active .phonedry-carry__load--over .phonedry-carry__fill {
+  background: var(--phonedry-bad);
+}
+
+.phonedry-active .phonedry-carry__load--over .phonedry-carry__weight {
+  color: var(--phonedry-bad);
+}
+
+.phonedry-active .phonedry-carry__weight {
+  font-size: 0.75rem;
+  color: var(--phonedry-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.phonedry-active .phonedry-carry__max {
+  opacity: 0.7;
+}
+
+.phonedry-active .phonedry-carry__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--phonedry-gap-md);
+}
+
+.phonedry-active .phonedry-coins {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--phonedry-gap-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.phonedry-active .phonedry-coins--empty {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--phonedry-muted);
+}
+
+.phonedry-active .phonedry-coin {
+  font-size: 0.875rem;
+}
+
+/* The denomination is what tells two numbers apart, so it is tinted rather than
+   dimmed — a muted "gp" next to a bright "12" reads as decoration. */
+.phonedry-active .phonedry-coin__label {
+  margin-left: 0.15em;
+  font-size: 0.6875rem;
+  color: var(--phonedry-coin, var(--phonedry-muted));
+}
+
+.phonedry-active .phonedry-coin--pp { --phonedry-coin: #cfd6dd; }
+.phonedry-active .phonedry-coin--gp { --phonedry-coin: var(--phonedry-accent); }
+.phonedry-active .phonedry-coin--ep { --phonedry-coin: #a8b3a0; }
+.phonedry-active .phonedry-coin--sp { --phonedry-coin: #b9bec4; }
+.phonedry-active .phonedry-coin--cp { --phonedry-coin: #b07a4f; }
+
+.phonedry-active .phonedry-attunement {
+  flex: none;
+  font-size: 0.75rem;
+  color: var(--phonedry-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Past three attunements the count is the only warning there is: dnd5e counts
+   them and leaves the ruling to the table, so the sheet says so rather than
+   refusing the tap that got there. */
+.phonedry-active .phonedry-attunement--over {
+  color: var(--phonedry-bad);
+}
+
+.phonedry-active .phonedry-attunement__label {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.625rem;
+}
+
+/* -------------------------------------------- */
+
+.phonedry-active .phonedry-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * Three columns and an optional fourth: the equip toggle, the row itself, and
+ * the attunement control where there is one. The stripe is the actions screen's
+ * — a weapon here and a weapon there should look like the same claim, so the
+ * palette is shared rather than restated.
+ */
+.phonedry-active .phonedry-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  border-bottom: 1px solid var(--phonedry-border);
+  border-left: 3px solid var(--phonedry-kind, var(--phonedry-border));
+}
+
+.phonedry-active .phonedry-item__equip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--phonedry-touch-target);
+  min-height: var(--phonedry-touch-target);
+  height: auto;
+  background: transparent;
+  border: none;
+}
+
+/* Items that cannot be equipped keep the column so the names stay aligned, and
+   get no control — a disabled toggle on a phone has no tooltip to explain
+   itself. Same rule as an unpreparable spell. */
+.phonedry-active .phonedry-item__equip--fixed {
+  display: block;
+  width: var(--phonedry-touch-target);
+}
+
+.phonedry-active .phonedry-item__read {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--phonedry-gap-md);
+
+  width: 100%;
+  min-height: var(--phonedry-touch-target);
+
+  /* Foundry sets an explicit height on buttons, which a grid row would
+     otherwise inherit and clip a two-line row against. */
+  height: auto;
+
+  padding: var(--phonedry-gap-sm) 0;
+  background: transparent;
+  border: none;
+  text-align: left;
+}
+
+.phonedry-active .phonedry-item__icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  border-radius: 0.25rem;
+  object-fit: cover;
+}
+
+/* min-width: 0 is what lets the middle column shrink so the weight on the right
+   is never pushed off the screen; without it a grid track refuses to go below
+   its content's intrinsic width. */
+.phonedry-active .phonedry-item__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.phonedry-active .phonedry-item__name,
+.phonedry-active .phonedry-item__meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* Something in hand is what the actions screen will offer, so it is the state
+   worth being able to see without reading — the rest of the pack recedes. */
+.phonedry-active .phonedry-item--equipped .phonedry-item__name {
+  color: var(--phonedry-text);
+}
+
+.phonedry-active .phonedry-item:not(.phonedry-item--equipped) .phonedry-item__name {
+  color: var(--phonedry-muted);
+}
+
+.phonedry-active .phonedry-item__quantity {
+  margin-left: 0.35em;
+  font-size: 0.8125rem;
+  color: var(--phonedry-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.phonedry-active .phonedry-item__meta {
+  font-size: 0.6875rem;
+  color: var(--phonedry-muted);
+}
+
+/* The stripe says the rows differ; this says how, sharing the actions screen's
+   colour for the same kind of thing. */
+.phonedry-active .phonedry-item__type {
+  color: var(--phonedry-kind, var(--phonedry-muted));
+}
+
+.phonedry-active .phonedry-item__weight {
+  padding-right: var(--phonedry-gap-sm);
+  font-size: 0.75rem;
+  color: var(--phonedry-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/*
+ * Attunement on the trailing edge, away from the equip pip. The two are
+ * separate states with separate rules — a shield is equipped and not attuned, a
+ * magic amulet may be attuned while stowed — and adjacent controls would invite
+ * the reading that one implies the other.
+ */
+.phonedry-active .phonedry-item__attune {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--phonedry-touch-target);
+  min-height: var(--phonedry-touch-target);
+  height: auto;
+  background: transparent;
+  border: none;
+  color: var(--phonedry-border);
+  font-size: 0.875rem;
+}
+
+.phonedry-active .phonedry-item__attune[aria-pressed="true"] {
+  color: var(--phonedry-accent);
+}
+
+/*
+ * A container heads its own group rather than getting a row of its own, so the
+ * heading has to carry a row's worth of controls — which means it stops being a
+ * line of small capitals and becomes a layout.
+ */
+.phonedry-active .phonedry-section__heading--container {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  gap: var(--phonedry-gap-md);
+
+  margin-bottom: 0;
+  padding-right: var(--phonedry-gap-sm);
+  border-bottom: 1px solid var(--phonedry-border);
+
+  /* The name of a pack is a name, not a label, so it keeps its own case and
+     size rather than inheriting the heading's small capitals. */
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.875rem;
+  color: var(--phonedry-text);
+}
+
+/* The heading's own equip toggle sits in the same column as the rows below it,
+   so the artwork and names line up down the whole group. */
+.phonedry-active .phonedry-section__heading--container .phonedry-item__equip {
+  margin-left: -3px;
+}
+
+/* -------------------------------------------- */
 /*  Conditions                                  */
 /* -------------------------------------------- */
 
@@ -1922,7 +2222,7 @@
 /*  Spell browser                               */
 /* -------------------------------------------- */
 
-.phonedry-active .phonedry-add-spells {
+.phonedry-active .phonedry-add {
   width: 100%;
   margin-bottom: var(--phonedry-gap-md);
   background: var(--phonedry-surface);
@@ -2058,7 +2358,11 @@
    boot path asks Foundry to index them; see registerIndexFields. */
 .phonedry-active .phonedry-browser__sorts {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+
+  /* However many sorts the open browser offers — three for spells, two for
+     gear. A fixed count left the gear browser with an empty third cell. */
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   gap: 1px;
   flex: none;
   margin-top: var(--phonedry-gap-md);
@@ -2278,6 +2582,15 @@
   user-select: text;
   -webkit-user-select: text;
   -webkit-touch-callout: default;
+}
+
+/* Not a description but a note about its absence, so it recedes rather than
+   sitting where the text would have been at full weight. */
+.phonedry-active .phonedry-describe__body--empty {
+  flex: none;
+  color: var(--phonedry-muted);
+  font-size: 0.8125rem;
+  font-style: italic;
 }
 
 /* Authored description markup, which arrives from the compendium rather than

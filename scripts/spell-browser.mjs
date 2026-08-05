@@ -9,6 +9,7 @@
  */
 
 import { dedupeEntries } from "./data/spell-browser.mjs";
+import { addFromCompendium } from "./compendium.mjs";
 
 /**
  * The spell list identifiers to offer this character.
@@ -87,26 +88,9 @@ export function ownedSpellIds(actor) {
  * @param {string} uuid  The compendium uuid of the spell.
  * @returns {Promise<Item|null>}
  */
-export async function addSpell(actor, uuid) {
-  try {
-    const source = await fromUuid(uuid);
-    if ( !source ) throw new Error(`No spell found at ${uuid}`);
-
-    const data = source.toObject();
-
-    // Record where it came from. Creating from compendium data does not carry
-    // this across on its own, and without it the spell has no provenance: the
-    // browser would offer it again as though the character did not have it, and
-    // nothing could say which compendium it came from.
-    foundry.utils.setProperty(data, "_stats.compendiumSource", uuid);
-
-    const [created] = await actor.createEmbeddedDocuments("Item", [data]);
-
-    ui.notifications?.info(game.i18n.format("PHONEDRY.Spells.Added", { name: source.name }));
-    return created;
-  } catch ( error ) {
-    console.error("phonedry | could not add spell", error);
-    ui.notifications?.error(game.i18n.localize("PHONEDRY.Spells.AddFailed"));
-    return null;
-  }
+export function addSpell(actor, uuid) {
+  return addFromCompendium(actor, uuid, {
+    added: "PHONEDRY.Spells.Added",
+    failed: "PHONEDRY.Spells.AddFailed"
+  });
 }
