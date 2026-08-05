@@ -54,10 +54,20 @@ The two platforms fail differently, and both need testing:
   so a build that feels fine on a Pixel can still be killed on an iPhone.
 - **Foundry's own dialogs render badly in WebKit.** ApplicationV2 dialog content
   collapses: the initiative roll dialog lost its formula, situational bonus
-  field and roll-mode select, leaving a title and three buttons, and the
-  create-actor dialog in desktop Safari shows only one of its four actor types.
-  Same failure, and it is Foundry's rather than ours — but every browser on iOS
-  is WebKit, including Chrome and Firefox, so it is permanently in our path.
+  field and roll-mode select, leaving a title and three buttons; the spell usage
+  dialog shows a title and the first fieldset heading; the create-actor dialog
+  offers one of its four actor types.
+
+  Established by testing rather than assumed: it happens in iOS Safari, iOS
+  Firefox and macOS Safari, and not in macOS Firefox — so it is WebKit, not iOS
+  and not an extension. It also happens with this module inactive, so it is
+  Foundry's bug rather than ours. But every browser on iOS is WebKit, so it
+  lands on our users regardless.
+
+  **Playwright's WebKit does not reproduce it.** It renders these dialogs
+  correctly and reports geometry identical to Chromium, so the smoke tests
+  cannot catch this class of problem and any fix for it has to be verified on a
+  real Safari. `?phonedry=on` forces the module on for that.
 
   This is a problem to weigh, not a rule to apply. Work through it in order:
 

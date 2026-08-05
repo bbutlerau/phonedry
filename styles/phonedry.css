@@ -1291,3 +1291,54 @@
   content: " · ";
   color: var(--phonedry-muted);
 }
+
+/* -------------------------------------------- */
+/*  Foundry dialogs in WebKit                   */
+/* -------------------------------------------- */
+
+/*
+ * Foundry's dialogs render with their content collapsed in Safari: the spell
+ * usage dialog shows its title and the first fieldset's heading and nothing
+ * else, and the create-actor dialog offers one of its four actor types. Firefox
+ * and Chrome are both fine, on the same machine.
+ *
+ * This is Foundry's bug rather than ours — it happens with this module inactive
+ * — but every browser on iOS is WebKit, so it lands squarely on Phonedry's
+ * users and there is no version of "wait for upstream" that helps them.
+ *
+ * The mechanism, as far as it can be established without a reproduction:
+ * dialogs are flex columns whose height Foundry computes and applies, with
+ * `.window-content` as `flex: 1 1 0%` and `overflow: auto`. A flex child with a
+ * zero basis takes its size entirely from the space the parent gives it, so if
+ * that computed height comes out short, the content is clipped rather than
+ * scrolled — which is what the screenshots show.
+ *
+ * The fix removes the dependency on that computed height: the dialog sizes to
+ * its content, and is capped against the viewport instead. `dvh` rather than
+ * `vh` because the two differ while a mobile browser's chrome is sliding in and
+ * out, and this is exactly the sort of measurement that goes wrong then.
+ *
+ * NOT VERIFIED against the failure. It cannot be: Playwright's WebKit renders
+ * these dialogs correctly and reports geometry identical to Chromium, so the
+ * build that reproduces this is not one available here. What has been checked
+ * is that it causes no regression in Chromium or in Playwright's WebKit. If it
+ * turns out not to help, it should be reverted rather than added to.
+ *
+ * Scoped under `.phonedry-active`, so it only applies where this module is
+ * driving. To try it on a desktop Safari, force the module on with
+ * `?phonedry=on`.
+ */
+.phonedry-active .application.dnd5e2,
+.phonedry-active dialog.application {
+  height: auto !important;
+  max-height: 85dvh;
+  overflow-y: auto;
+}
+
+.phonedry-active .application.dnd5e2 .window-content,
+.phonedry-active dialog.application .window-content {
+  flex: 0 0 auto;
+  height: auto;
+  max-height: none;
+  overflow: visible;
+}

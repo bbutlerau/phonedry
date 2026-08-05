@@ -55,12 +55,16 @@ test.describe("spells", () => {
     // Slots first: it is the question asked before every cast.
     await expect(page.locator(".phonedry-slot").first()).toBeVisible();
 
-    // Level order, not alphabetical — cantrips lead. Compared lower-cased
-    // because innerText returns what CSS renders, and these headings are
-    // uppercased by the stylesheet rather than in the data.
+    // Level order, not alphabetical — cantrips lead.
+    //
+    // Read from the level headings only, and matched rather than compared: the
+    // heading also carries a slot count, and the two engines disagree about
+    // whether innerText puts it on its own line. Uppercasing is the
+    // stylesheet's doing rather than the data's, hence the case-insensitive
+    // patterns.
     const headings = await page.locator(".phonedry-section__heading").allInnerTexts();
-    expect(headings.slice(1, 3).map(h => h.split("\n")[0].trim().toLowerCase()))
-      .toEqual(["cantrip", "1st level"]);
+    expect(headings[1]).toMatch(/^cantrip/i);
+    expect(headings[2]).toMatch(/^1st level/i);
 
     // Cantrips are always available, so they get no prepare control. Located
     // by its heading rather than by position — a structural selector would
