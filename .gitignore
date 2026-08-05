@@ -10,6 +10,11 @@ node_modules/
 npm-debug.log*
 coverage/
 
+# Playwright output: traces, screenshots and run state from the smoke tests
+test-results/
+playwright-report/
+.playwright/
+
 # Build output from the release workflow
 dist/
 *.zip
