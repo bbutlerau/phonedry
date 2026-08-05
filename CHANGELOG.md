@@ -71,6 +71,8 @@ All notable changes to Phonedry are recorded here. Versions follow
   prompt is the whole of what the platform offers. Tablets still rotate freely.
 - Tablets lay the abilities out in a single row of six and split the skills
   into two columns, which fits the whole sheet on screen without scrolling.
+- The smoke tests run against WebKit as well as Chromium. Every browser on iOS
+  is WebKit, so half the target devices were running an engine nothing tested.
 - Unit tests for the actor-to-view-model mappers. These need no Foundry, no
   browser and no world, so unlike the smoke tests they can run in CI.
 

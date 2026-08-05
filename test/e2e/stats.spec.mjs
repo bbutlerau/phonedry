@@ -184,6 +184,20 @@ test.describe("stats screen", () => {
     const hp = () => page.evaluate(
       () => game.modules.get("phonedry").api.shell.actor.system.attributes.hp
     );
+
+    // Start from a known state rather than from whatever the world happens to
+    // be in. This test moves hit points around, and an earlier failure used to
+    // leave the character part-way through — which then broke every later run
+    // with an error that pointed at the wrong thing entirely.
+    await page.evaluate(() => {
+      const actor = game.modules.get("phonedry").api.shell.actor;
+      return actor.update({
+        "system.attributes.hp.value": actor.system.attributes.hp.max,
+        "system.attributes.hp.temp": 0
+      });
+    });
+    await expect.poll(async () => (await hp()).value).toBe((await hp()).max);
+
     const before = await hp();
 
     const editor = page.locator(".phonedry-hp-editor");
@@ -319,10 +333,34 @@ test.describe("stats screen", () => {
     await joinGame(page);
     await reloadAt(page, PHONE_VIEWPORT);
 
+    // Both spellings are checked because WebKit needs the prefixed one and does
+    // not implement the standard property at all — `CSS.supports("user-select",
+    // "none")` is false there. That is exactly why the stylesheet declares
+    // both, and reading only the unprefixed name reports every row as
+    // selectable on the one engine that matters most here.
     const selectable = await page.locator(".phonedry-skill__name").evaluateAll(
-      els => els.filter(el => getComputedStyle(el).userSelect !== "none").length
+      els => els.filter(el => {
+        const style = getComputedStyle(el);
+        return (style.webkitUserSelect ?? style.userSelect) !== "none";
+      }).length
     );
     expect(selectable).toBe(0);
+
+    // The property is a proxy for the behaviour; this is the behaviour. If a
+    // future engine drops the prefix, the check above could pass while text
+    // stayed selectable.
+    const selected = await page.evaluate(() => {
+      const el = document.querySelector(".phonedry-skill__name");
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const selection = getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      const text = selection.toString();
+      selection.removeAllRanges();
+      return text;
+    });
+    expect(selected, "skill labels can still be selected as text").toBe("");
 
     await context.close();
   });
