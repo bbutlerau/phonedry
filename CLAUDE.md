@@ -276,6 +276,48 @@ offers*. When they disagree, the container wins.
   Pushing the tag is what triggers the release workflow.
 - Never bump the version or create a tag without being asked to cut a release.
 
+## Publishing: the official package listing is closed to this codebase
+
+Foundry's [AI policy](https://foundryvtt.com/article/ai-policy/) governs what may
+be submitted to the official package repository. Brad read it and decided
+Phonedry as it stands does not qualify. He agrees with the policy; this is not a
+constraint to look for a way around.
+
+Read carefully, the policy does *not* prohibit AI-written code — it permits
+"AI-generated code, code completion, refactoring suggestions, debugging
+assistance". What it prohibits is "generating large blocks of code through AI
+prompting without understanding the results". The bar it sets is that "an author
+must be able to understand, explain, modify, and maintain every part of their
+submitted codebase".
+
+Two things therefore disqualify this codebase, and the second is the one that is
+easy to miss:
+
+1. **Learning mode is "Claude writes it."** That was the right choice for
+   getting a working sheet onto a phone, and it is the wrong basis for a
+   submission under this policy.
+2. **The commit history is the evidence they inspect.** The policy asks for "a
+   commit history that demonstrates iteration and authorship", and lists
+   "examining commit history" among its investigation methods. This repository
+   has a handful of large batch commits, each co-authored by Claude — which is
+   honest, and close to the opposite of what that asks for. It cannot be
+   retrofitted.
+
+What this does *not* block is distribution. The release workflow, tags and
+GitHub releases are unaffected, and players can install from a manifest URL. Only
+the official listing is closed.
+
+The plan is a V2: a rewrite by Brad with Claude assisting rather than
+implementing, in its own repository with a clean history from the first commit.
+Settle the commit granularity at the start — comprehension can be demonstrated
+in an interview, but a history showing iteration has to be built as the work
+happens.
+
+The full plan, agreed in advance so the session that starts it does not have to
+rediscover it, is under "The V2 plan" in `session.md`. The load-bearing part is
+the first line of it: **Brad writes the code and Claude assists.** If that
+quietly slips back to Claude implementing, V2 has no reason to exist.
+
 ## Workflow
 
 Follow explore → plan → code → verify for anything beyond a trivial one-file
