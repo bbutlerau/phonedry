@@ -368,7 +368,23 @@ All notable changes to Phonedry are recorded here. Versions follow
   the weapon it modifies or the same way a weapon attack does, rather than
   living only on the spells screen where a fight has no reason to look for it.
 
+- A weapon attack from the actions screen now asks who it is aimed at first,
+  the same picker a spell already opened, so the chat card names a target and
+  shows a save button instead of naming nobody.
+
+- The advantage/normal/disadvantage tint on the header's selector now also
+  marks a weapon attack or an attack cantrip, the two other rolls on the
+  sheet the selector actually configures.
+
 ### Fixed
+- A weapon attack, and an attack cantrip cast from the actions screen,
+  ignored the header's advantage/normal/disadvantage selector and popped
+  dnd5e's own unconfigured roll dialog every time instead — both route
+  through `Activity#use`, which auto-triggers the attack roll through an
+  internal call that does not forward the dialog options it was given. The
+  attack roll is now made directly in both cases, with the header's mode and
+  dnd5e's own dialog suppressed, the same as every other roll on the sheet.
+
 - The highest spell slot box stood taller than the rest. The grid row measures a
   few pixels taller than any slot in it, and the default stretch filled that gap
   for the last slot only. Each box now sizes to its own content, so they match.

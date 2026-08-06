@@ -38,12 +38,22 @@ const DISPOSITION = { HOSTILE: -1, NEUTRAL: 0, FRIENDLY: 1 };
  * draw. Offering a target list for one would invite a player to pick three
  * names and believe the area had been resolved.
  *
+ * An attack roll — a weapon swing as much as a spell like Fire Bolt — wants
+ * targets too, and is checked for on its own rather than folded into
+ * `PICKABLE`. dnd5e's spells set `target.affects.type` to something like
+ * `creatureOrObject`, which is what `PICKABLE` was written against, but a
+ * weapon's own Attack activity leaves that field empty — the rules do not
+ * need it stated, because making an attack roll already implies a target.
+ * Reading `activity.type` instead is what makes a weapon behave the same as
+ * a spell here rather than silently doing nothing.
+ *
  * @param {object} activity  An activity, as dnd5e prepares it.
  * @returns {boolean}
  */
 export function needsTargets(activity) {
   const target = activity?.target ?? {};
   if ( target.template?.type ) return false;
+  if ( activity?.type === "attack" ) return true;
   return PICKABLE.has(target.affects?.type);
 }
 

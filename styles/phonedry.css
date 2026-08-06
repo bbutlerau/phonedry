@@ -918,11 +918,13 @@
  * highlight on the control alone would sit in a header they have stopped
  * looking at; tinting the thing they are actually tapping cannot be missed.
  */
-.phonedry-active .phonedry-shell[data-roll-mode="advantage"] [data-action="roll"] {
+.phonedry-active .phonedry-shell[data-roll-mode="advantage"] [data-action="roll"],
+.phonedry-active .phonedry-shell[data-roll-mode="advantage"] .phonedry-action__use--rollable {
   box-shadow: inset 0 -2px 0 var(--phonedry-ok);
 }
 
-.phonedry-active .phonedry-shell[data-roll-mode="disadvantage"] [data-action="roll"] {
+.phonedry-active .phonedry-shell[data-roll-mode="disadvantage"] [data-action="roll"],
+.phonedry-active .phonedry-shell[data-roll-mode="disadvantage"] .phonedry-action__use--rollable {
   box-shadow: inset 0 -2px 0 var(--phonedry-bad);
 }
 

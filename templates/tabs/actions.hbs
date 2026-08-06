@@ -43,7 +43,13 @@
                   a cross-listed spell casts through the same path the spells
                   screen uses, everything else calls its own activity
                   directly. See `describeSpellAction` and `describeActivity`. --}}
-            <button type="button" class="phonedry-action__use"
+            {{!-- `phonedry-action__use--rollable` is what lets the header's
+                  advantage/normal/disadvantage selector tint this row too —
+                  see the note on `attack` in `describeActivity`. Only an
+                  attack activity carries it, because that is the only roll
+                  here the selector actually configures. --}}
+            <button type="button"
+                    class="phonedry-action__use {{#if this.attack}}phonedry-action__use--rollable{{/if}}"
                     data-action="{{this.action}}"
                     data-item-id="{{this.itemId}}" data-activity-id="{{this.activityId}}"
                     data-spell-id="{{this.spellId}}"

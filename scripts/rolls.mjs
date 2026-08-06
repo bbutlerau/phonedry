@@ -37,10 +37,15 @@ export const ROLL_MODE = {
 /**
  * Turn a roll mode into the config flags dnd5e expects.
  *
+ * Exported rather than kept local: the actions screen needs the same
+ * translation for an attack roll, which is a d20 test the same as an ability
+ * check is, and duplicating the two-line mapping would be the only reason not
+ * to share it.
+ *
  * @param {string} mode  A ROLL_MODE value.
  * @returns {{advantage: boolean, disadvantage: boolean}}
  */
-function modeFlags(mode) {
+export function modeFlags(mode) {
   return {
     advantage: mode === ROLL_MODE.ADVANTAGE,
     disadvantage: mode === ROLL_MODE.DISADVANTAGE

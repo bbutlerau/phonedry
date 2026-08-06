@@ -137,14 +137,59 @@ test.describe("actions", () => {
     await panel.click({ position: { x: 10, y: 10 } });
     await expect(panel).toBeHidden();
 
-    /* --- and tapping uses it --- */
+    /* --- an attack asks who first, and honours advantage --- */
+
+    // dnd5e leaves a weapon's own target configuration empty — it does not
+    // need one stated, because making an attack roll already implies a
+    // target — so this is the one case `needsTargets` checks the activity's
+    // own type for rather than reading it off the target block the way a
+    // spell's is read.
+    //
+    // The stripe on the row is the same tint the header's rolls carry, so set
+    // advantage first: this is the one row on the actions screen the mode
+    // actually reaches.
+    await page.locator('.phonedry-tabs__tab[data-tab="stats"]').click();
+    await page.click("[data-action='setRollMode'][data-mode='advantage']");
+    await page.locator('.phonedry-tabs__tab[data-tab="actions"]').click();
+
+    const pistolUse = pistol.locator(".phonedry-action__use");
+    await expect(pistolUse).toHaveClass(/phonedry-action__use--rollable/);
+
+    await pistolUse.click();
+
+    const picker = page.locator(".phonedry-targets");
+    await expect(picker).toBeVisible();
+
+    const targetRows = page.locator(".phonedry-target");
+    await targetRows.first().click();
+    await expect(targetRows.first()).toHaveAttribute("aria-pressed", "true");
 
     // The load-bearing assertion: the tap reaches the system. dnd5e posting a
     // chat card is the observable proof, and it is also what the roll log picks
     // up — the sidebar this module suppresses is where those normally land.
     const before = await page.evaluate(() => game.messages.size);
-    await pistol.locator(".phonedry-action__use").click();
+    await page.locator("[data-action='confirmTargets']").click();
+    await expect(picker).toBeHidden();
     await page.waitForFunction(n => game.messages.size > n, before, { timeout: 10_000 });
+
+    // dnd5e's own attack-roll dialog must never appear: `useActivity` calls
+    // `rollAttack` directly with it suppressed, the same as every other roll
+    // on the sheet. Left open, this is exactly the dialog a phone player has
+    // no route back from, since Phonedry has no chat sidebar to find it in.
+    await expect(page.locator("dialog.roll-configuration")).toHaveCount(0);
+
+    // The attack roll itself carries advantage through — not just that a
+    // message posted, but that the header's mode actually reached the roll
+    // dnd5e made, the way it already does for every check and save.
+    await expect.poll(() => page.evaluate(
+      () => [...game.messages].at(-1)?.rolls?.[0]?.formula ?? ""
+    ), { message: "the attack roll did not carry advantage" }).toMatch(/adv/);
+
+    // Same proof the spells screen carries: the target actually reached
+    // dnd5e's own card, not just the picker closing.
+    await expect.poll(() => page.evaluate(
+      () => [...game.messages].at(-1)?.getFlag("dnd5e", "targets")?.map(t => t.name) ?? []
+    ), { message: "the chat card did not carry the chosen target" }).not.toEqual([]);
 
     expect(errors).toEqual([]);
     await context.close();

@@ -241,6 +241,17 @@ describe("describeSpellAction", () => {
     assert.deepEqual(row.uses, { value: 1, max: 1 });
     assert.equal(row.spent, false);
   });
+
+  it("marks an attack cantrip the same way describeActivity marks a weapon", () => {
+    // castSpell gives an attack cantrip the identical rollAttack treatment
+    // useActivity gives a weapon, so the tint is honest here too.
+    const fireBolt = item({ id: "fb", name: "Fire Bolt", type: "spell", level: 0 });
+    const row = describeSpellAction(fireBolt, activity({ activityType: "attack" }));
+    assert.equal(row.attack, true);
+
+    const smite = item({ id: "smite1", type: "spell", level: 1 });
+    assert.equal(describeSpellAction(smite, activity({ activityType: "damage" })).attack, false);
+  });
 });
 
 /* -------------------------------------------- */
@@ -274,6 +285,17 @@ describe("describeActivity", () => {
     assert.equal(row.key, "item1.act1");
     assert.equal(row.itemId, "item1");
     assert.equal(row.activityId, "act1");
+  });
+
+  it("marks only an attack activity as one the roll mode selector affects", () => {
+    const attack = describeActivity(activity({ activityType: "attack" }), item(), false);
+    assert.equal(attack.attack, true);
+
+    // A save-type activity — Turn Undead, Divine Spark: Save — makes a d20
+    // roll too, but the actions screen never configures its advantage or
+    // disadvantage the way it does an attack's, so the row is not marked.
+    const save = describeActivity(activity({ activityType: "save" }), item(), false);
+    assert.equal(save.attack, false);
   });
 
   it("names a multi-activity row after the activity, with the item beneath", () => {

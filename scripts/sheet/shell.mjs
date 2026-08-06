@@ -24,7 +24,7 @@ import {
 } from "../conditions.mjs";
 import { setAttuned, setEquipped } from "../inventory.mjs";
 import { takeRest } from "../rest.mjs";
-import { useActivity } from "../actions.mjs";
+import { findActivity, useActivity } from "../actions.mjs";
 import { castSpell, setPrepared } from "../spells.mjs";
 import { buildTargetsView, needsTargets } from "../data/targets.mjs";
 import { broadcastTargets, collectCandidates, targetDescriptors } from "../targets.mjs";
@@ -279,8 +279,17 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   #describeStack = [];
 
   /**
-   * The spell waiting on a target choice, or null when the picker is closed.
-   * @type {Item|null}
+   * What is waiting on a target choice, or null when the picker is closed.
+   *
+   * Two shapes rather than one, because the two callers finish differently. A
+   * spell is cast through `Item#use`, which lets dnd5e resolve which of the
+   * spell's own activities actually runs — the same as it would from the
+   * spells screen — so only the item is kept. An activity reached from the
+   * actions screen already named which one to run when its row was tapped, and
+   * finishing it means calling that exact activity rather than asking dnd5e to
+   * pick again.
+   *
+   * @type {{kind: "spell", item: Item}|{kind: "activity", activity: object}|null}
    */
   #targeting = null;
 
@@ -615,11 +624,19 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   #prepareTargets() {
     if ( !this.#targeting ) return { open: false, groups: [], count: 0 };
 
+    const isSpell = this.#targeting.kind === "spell";
+
     return {
       open: true,
       ...buildTargetsView({
-        activity: this.#targeting.system?.activities?.contents?.[0],
-        name: this.#targeting.name,
+        // A spell's own activities are not resolved yet — dnd5e picks when it
+        // is cast — so the first stands in for the check, same heuristic
+        // `#onCastSpell` uses. An activity reached from the actions screen is
+        // already the exact one that will run.
+        activity: isSpell
+          ? this.#targeting.item.system?.activities?.contents?.[0]
+          : this.#targeting.activity,
+        name: isSpell ? this.#targeting.item.name : (this.#targeting.activity.item?.name ?? ""),
         candidates: this.#candidates,
         selected: this.#selectedTargets
       })
@@ -1127,9 +1144,9 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
     const activity = spell.system?.activities?.contents?.[0];
     const candidates = needsTargets(activity) ? collectCandidates(this.actor) : [];
 
-    if ( !candidates.length ) return castSpell(spell);
+    if ( !candidates.length ) return castSpell(spell, [], this.rollMode);
 
-    this.#targeting = spell;
+    this.#targeting = { kind: "spell", item: spell };
     this.#candidates = candidates;
     this.#selectedTargets = new Set();
     this.render({ parts: ["targets"] });
@@ -1149,22 +1166,26 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
-   * Cast at whoever is selected.
+   * Act on whoever is selected.
    *
    * @this {PhonedryShell}
    */
   static #onConfirmTargets() {
-    const spell = this.#targeting;
-    if ( !spell ) return;
+    const targeting = this.#targeting;
+    if ( !targeting ) return;
 
     const descriptors = targetDescriptors(this.#candidates, this.#selectedTargets);
 
-    // Broadcast before casting, so a GM watching the map sees the targeting as
+    // Broadcast before acting, so a GM watching the map sees the targeting as
     // the card arrives rather than a moment after it.
     if ( descriptors.length ) broadcastTargets(this.#candidates, this.#selectedTargets);
 
     this.#closeTargeting();
-    castSpell(spell, descriptors);
+
+    if ( targeting.kind === "spell" ) castSpell(targeting.item, descriptors, this.rollMode);
+    else {
+      useActivity(this.actor, targeting.activity.item.id, targeting.activity.id, descriptors, this.rollMode);
+    }
   }
 
   /**
@@ -1276,11 +1297,34 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
    * tap: `Item#use` on Channel Divinity would open a dialog asking which of its
    * three activities was meant, and the row has already answered that.
    *
+   * An attack that hits a creature gets the picker first, the same as a spell
+   * does — a weapon swung at nobody is not a meaningful tap, and without this
+   * the chat card would name no target the way every spell's used to before
+   * `castSpell` got the same treatment. The check is generic rather than
+   * gated on the item being a weapon: `needsTargets` reads the activity's own
+   * configuration, so a feature that targets creatures — Turn Undead, aimed at
+   * a pack rather than one — gets the same picker for the same reason.
+   *
    * @this {PhonedryShell}
    */
   static #onUseActivity(event, target) {
+    if ( !this.actor ) return;
+
     const { itemId, activityId } = target.dataset;
-    if ( this.actor ) useActivity(this.actor, itemId, activityId);
+    const activity = findActivity(this.actor, itemId, activityId);
+    if ( !activity ) return;
+
+    const candidates = needsTargets(activity) ? collectCandidates(this.actor) : [];
+
+    if ( !candidates.length ) {
+      useActivity(this.actor, itemId, activityId, [], this.rollMode);
+      return;
+    }
+
+    this.#targeting = { kind: "activity", activity };
+    this.#candidates = candidates;
+    this.#selectedTargets = new Set();
+    this.render({ parts: ["targets"] });
   }
 
   /**

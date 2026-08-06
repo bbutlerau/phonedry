@@ -179,6 +179,15 @@ export function describeActivity(activity, item, multiple, typeLabels = {}) {
     // `spellId` is set — see `describeSpellAction` for the other side.
     action: "useActivity",
 
+    // Whether the header's advantage/normal/disadvantage selector actually
+    // does anything to this row's roll. True only for an attack — the one d20
+    // roll `useActivity` configures the mode for, see the note above it — so
+    // the stylesheet can tint this row along with the header's rolls and
+    // nowhere else. `describeSpellAction` carries the same field for a
+    // cross-listed attack cantrip, which `castSpell` gives the identical
+    // treatment.
+    attack: activity.type === "attack",
+
     name,
 
     // Only shown when it adds something. "Channel Divinity" under "Turn Undead"
@@ -274,6 +283,13 @@ export function describeSpellAction(item, activity, typeLabels = {}) {
     activityId: null,
     spellId: item.id,
     action: "castSpell",
+
+    // True for an attack cantrip. Safe to mark here unlike the comment on
+    // `describeActivity` warned against: `castSpell` now gives an attack
+    // cantrip the same `rollAttack`-with-suppressed-dialog treatment
+    // `useActivity` gives a weapon, so the tint is no longer a row promising
+    // something the tap does not do.
+    attack: activity.type === "attack",
 
     name: item.name,
     subtitle: null,

@@ -14,8 +14,11 @@ import {
 } from "../../scripts/data/targets.mjs";
 
 /** An activity's target block, shaped like dnd5e's. */
-function target({ templateType = "", affectsType = "creature", count = null } = {}) {
-  return { target: { template: { type: templateType }, affects: { type: affectsType, count } } };
+function target({ templateType = "", affectsType = "creature", count = null, type } = {}) {
+  return {
+    ...(type === undefined ? {} : { type }),
+    target: { template: { type: templateType }, affects: { type: affectsType, count } }
+  };
 }
 
 /** A candidate row, as the Foundry-facing layer builds them. */
@@ -46,6 +49,20 @@ describe("needsTargets", () => {
     assert.equal(needsTargets(target({ affectsType: "space" })), false);
     assert.equal(needsTargets(target({ affectsType: "" })), false);
     assert.equal(needsTargets(undefined), false);
+  });
+
+  it("wants targets for an attack roll even with no affects type stated", () => {
+    // A weapon's own Attack activity, read out of the development world:
+    // dnd5e leaves `target.affects.type` empty on it, unlike a spell — making
+    // an attack roll already implies a target, so the rules never need it
+    // spelled out the way a spell's creature-or-ally-or-enemy choice does.
+    assert.equal(needsTargets(target({ type: "attack", affectsType: "" })), true);
+  });
+
+  it("still refuses an attack roll with a template", () => {
+    // Not a real dnd5e shape today, but the exclusion should hold regardless
+    // of what kind of activity is asking for it.
+    assert.equal(needsTargets(target({ type: "attack", templateType: "cone" })), false);
   });
 });
 

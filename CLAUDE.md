@@ -337,10 +337,21 @@ No need to narrate every check. Say plainly if something didn't work or you're
 unsure.
 
 **Do not run the full suites until a commit is actually being made.** This is a
-rule, not a preference — Brad has had to say it twice. `npm test`,
+rule, not a preference — Brad has had to say it four times now. `npm test`,
 `npm run test:webkit` and `npm run test:all` are for the moment the work is
 being committed and for nothing else. Not "before calling a milestone done",
-not to confirm a feature works, not after finishing a batch of edits.
+not to confirm a feature works, not after finishing a batch of edits, not
+because the change happened to touch gestures or layout — that last one is
+its own trap, addressed directly in the WebKit section below, because it is
+the one that actually caused the repeat.
+
+"Committed" means Brad has said so — "commit", "commit and push", or
+equivalent — in this conversation, for this change. It does not mean "the
+feature looks done" or "I would call this a good stopping point." Inferring
+commit-readiness from task completion is the exact failure this rule exists
+to rule out; if that inference were good enough, the rule would not need to
+exist. When work feels finished, say so and ask, or wait — do not run the
+suite to check.
 
 During a piece of work: `npm run test:unit`, which is instant, plus the single
 smoke spec covering what changed. That is the whole loop. The suites take
@@ -355,10 +366,15 @@ npm run test:all   # everything, both engines; ~6 minutes
 ```
 
 WebKit is deliberately not in the default run. It roughly doubles the time, and
-a dev loop that takes six minutes stops being run. Use it at commit time, and
-any time the change is to layout, gestures, input handling or anything touching
-a Foundry dialog — those are the areas where the two engines have actually
-disagreed.
+a dev loop that takes six minutes stops being run. This describes which suite
+to reach for **once commit time has actually arrived** — it is not a second
+permission to run early. Read "any time the change is to layout, gestures,
+input handling or anything touching a Foundry dialog" as: at commit time,
+don't let a change like that slide through on Chromium alone the way an
+unrelated one-line fix might. It does not mean "run WebKit now because this
+change happens to be a gesture" — that reading has caused the rule above to be
+broken more than once, by treating "this touched gestures" as its own trigger
+independent of whether Brad asked for a commit.
 
 ### Running the suite from a Mac
 

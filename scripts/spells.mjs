@@ -11,6 +11,7 @@
  */
 
 import { attempt } from "./attempt.mjs";
+import { modeFlags, ROLL_MODE } from "./rolls.mjs";
 
 /**
  * Cast a spell.
@@ -20,10 +21,19 @@ import { attempt } from "./attempt.mjs";
  * component this module has had the most trouble with, so it is worth checking
  * on a device whenever this path changes.
  *
+ * An attack cantrip gets the same treatment `useActivity` gives a weapon: see
+ * the note above it in `actions.mjs` for why `Activity#use` cannot be left to
+ * trigger the attack roll on its own. `Item5e#use` is a thin wrapper here —
+ * it resolves which activity a multi-activity spell means and forwards this
+ * function's own config straight into that activity's `use`, so the same
+ * `subsequentActions: false` reaches it the way it would a bare activity call.
+ *
  * @param {Item} spell
+ * @param {object[]} [targets]
+ * @param {string} [mode]  A `ROLL_MODE` value, read only for an attack cantrip.
  * @returns {Promise<object|null>}
  */
-export function castSpell(spell, targets = []) {
+export function castSpell(spell, targets = [], mode = ROLL_MODE.NORMAL) {
   /*
    * Targets are handed to dnd5e as message flags because that is exactly where
    * it would have put them itself. Its own `getTargetDescriptors` reads
@@ -38,6 +48,18 @@ export function castSpell(spell, targets = []) {
   const message = targets.length
     ? { data: { flags: { dnd5e: { targets } } } }
     : {};
+
+  // The same heuristic `needsTargets` is checked against for this spell: the
+  // first activity stands in for "what casting this spell means", because
+  // dnd5e has not resolved which one runs yet — `use` does that internally.
+  const activity = spell.system?.activities?.contents?.[0];
+
+  if ( activity?.type === "attack" ) {
+    return attempt(async () => {
+      await spell.use({ subsequentActions: false }, {}, message);
+      return activity.rollAttack({ ...modeFlags(mode) }, { configure: false }, message);
+    }, spell.name, "PHONEDRY.Spells.Failed");
+  }
 
   return attempt(() => spell.use({}, {}, message), spell.name, "PHONEDRY.Spells.Failed");
 }
