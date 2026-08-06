@@ -5,6 +5,8 @@ All notable changes to Phonedry are recorded here. Versions follow
 
 ## [Unreleased]
 
+## [0.1.0] — 2026-08-06
+
 ### Added
 - Initial project scaffold: module manifest, licence, and release workflow.
 - Boot path: forces Foundry's `noCanvas` mode on mobile clients so PIXI and the
