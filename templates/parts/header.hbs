@@ -11,10 +11,18 @@
 
   {{#if stats}}
     <div class="phonedry-header__identity">
+      {{!-- The switch-character targets. Holding either opens the switcher
+            panel — see switcher.hbs — regardless of whether there is anyone
+            else to switch to; an empty panel says so rather than the hold
+            doing nothing, which would read as the gesture not working at
+            all. Scoped to these two elements rather than the whole identity
+            row so a hold on the logout button next to them does not also
+            open it. --}}
       {{#if stats.header.img}}
-        <img class="phonedry-header__portrait" src="{{stats.header.img}}" alt="" />
+        <img class="phonedry-header__portrait" src="{{stats.header.img}}" alt=""
+             data-switch-character />
       {{/if}}
-      <div class="phonedry-header__names">
+      <div class="phonedry-header__names" data-switch-character>
         <h1 class="phonedry-header__name">{{stats.header.name}}</h1>
         <p class="phonedry-header__subtitle">
           {{#if stats.header.race}}{{stats.header.race}}{{/if}}

@@ -1,0 +1,44 @@
+{{!--
+  Which of the player's own characters is showing, opened by holding the
+  portrait or name in the header.
+
+  Anchored to the top rather than the bottom like describe.hbs: this opens from
+  the header, so it arrives directly under the thing that was held instead of
+  travelling to the far edge of the screen.
+
+  CONSTRAINT: exactly one top-level element. See the note in header.hbs.
+--}}
+{{!-- The dimmed area below the panel dismisses it, same convention as the
+      describe panel. --}}
+<div class="phonedry-switcher" data-action="closeSwitcher"
+     {{#unless switcher.open}}hidden{{/unless}}>
+  {{#if switcher.open}}
+    <div class="phonedry-switcher__panel" role="dialog" aria-modal="true"
+         aria-label="{{localize 'PHONEDRY.CharacterSwitcher.Heading'}}">
+      <div class="phonedry-switcher__head">
+        <span class="phonedry-switcher__title">{{localize "PHONEDRY.CharacterSwitcher.Heading"}}</span>
+        <button type="button" class="phonedry-switcher__close" data-action="closeSwitcher"
+                aria-label="{{localize 'PHONEDRY.CharacterSwitcher.Close'}}">&times;</button>
+      </div>
+
+      {{#if switcher.candidates.length}}
+        <ul class="phonedry-switcher__list">
+          {{#each switcher.candidates}}
+            <li>
+              <button type="button" class="phonedry-switcher__candidate"
+                      data-action="switchCharacter" data-actor-id="{{this.id}}"
+                      aria-label="{{localize 'PHONEDRY.CharacterSwitcher.SwitchTo' name=this.name}}">
+                <img class="phonedry-switcher__portrait" src="{{this.img}}" alt="" />
+                <span class="phonedry-switcher__name">{{this.name}}</span>
+              </button>
+            </li>
+          {{/each}}
+        </ul>
+      {{else}}
+        {{!-- Said in words rather than the hold doing nothing, which would
+              read as the gesture having failed. --}}
+        <p class="phonedry-switcher__empty">{{localize "PHONEDRY.CharacterSwitcher.Empty"}}</p>
+      {{/if}}
+    </div>
+  {{/if}}
+</div>

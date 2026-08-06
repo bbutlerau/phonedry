@@ -360,6 +360,10 @@ All notable changes to Phonedry are recorded here. Versions follow
 - Unit tests for the actor-to-view-model mappers. These need no Foundry, no
   browser and no world, so unlike the smoke tests they can run in CI.
 
+- A character switcher, for a player who owns more than one actor. Holding the
+  portrait or name in the header opens a dimmed panel listing the player's
+  other owned characters; tapping one switches the sheet to show it.
+
 ### Fixed
 - The highest spell slot box stood taller than the rest. The grid row measures a
   few pixels taller than any slot in it, and the default stretch filled that gap

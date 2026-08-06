@@ -2963,6 +2963,110 @@
   overflow-x: auto;
 }
 
+/*
+ * Which of the player's own characters is showing, opened by holding the
+ * portrait or name in the header.
+ */
+.phonedry-active .phonedry-switcher {
+  position: fixed;
+  inset: 0;
+  z-index: 62;
+
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+
+  background: rgb(0 0 0 / 55%);
+}
+
+.phonedry-active .phonedry-switcher[hidden] {
+  display: none;
+}
+
+/*
+ * Anchored to the top, not the bottom like the description panel: this opens
+ * from the header, so it arrives directly under the thing that was held
+ * rather than travelling to the far edge of the screen.
+ */
+.phonedry-active .phonedry-switcher__panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 60dvh;
+
+  background: var(--phonedry-surface);
+  border-bottom: 1px solid var(--phonedry-border);
+  border-radius: 0 0 0.75rem 0.75rem;
+
+  padding:
+    calc(var(--phonedry-safe-top) + var(--phonedry-gap-lg))
+    calc(var(--phonedry-safe-right) + var(--phonedry-gap-lg))
+    var(--phonedry-gap-lg)
+    calc(var(--phonedry-safe-left) + var(--phonedry-gap-lg));
+}
+
+.phonedry-active .phonedry-switcher__head {
+  display: flex;
+  align-items: center;
+  gap: var(--phonedry-gap-md);
+  flex: none;
+  margin-bottom: var(--phonedry-gap-md);
+}
+
+.phonedry-active .phonedry-switcher__title {
+  flex: 1;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.phonedry-active .phonedry-switcher__close {
+  flex: none;
+  width: var(--phonedry-touch-target);
+  background: var(--phonedry-bg);
+  border: 1px solid var(--phonedry-border);
+  border-radius: 0.375rem;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.phonedry-active .phonedry-switcher__list {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.phonedry-active .phonedry-switcher__candidate {
+  display: flex;
+  align-items: center;
+  gap: var(--phonedry-gap-md);
+  width: 100%;
+  padding: var(--phonedry-gap-md);
+}
+
+.phonedry-active .phonedry-switcher__list li + li {
+  margin-top: var(--phonedry-gap-sm);
+}
+
+.phonedry-active .phonedry-switcher__portrait {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--phonedry-border);
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.phonedry-active .phonedry-switcher__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.phonedry-active .phonedry-switcher__empty {
+  margin: 0;
+  color: var(--phonedry-muted);
+  font-size: 0.875rem;
+}
+
 /* Feedback while a press is being held, so the gesture is not silent until it
    completes. */
 .phonedry-active .phonedry-holding {

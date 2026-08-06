@@ -196,6 +196,12 @@
       "Target": "Target",
       "ToHit": "Attack"
     },
+    "CharacterSwitcher": {
+      "Close": "Close",
+      "Empty": "You do not own another character in this world.",
+      "Heading": "Switch character",
+      "SwitchTo": "Switch to {name}"
+    },
     "LogOut": "Log out"
   }
 }

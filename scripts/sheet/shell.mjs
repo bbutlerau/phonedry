@@ -66,6 +66,8 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       toggleAttuned: PhonedryShell.#onToggleAttuned,
       logOut: PhonedryShell.#onLogOut,
       closeBrowser: PhonedryShell.#onCloseBrowser,
+      closeSwitcher: PhonedryShell.#onCloseSwitcher,
+      switchCharacter: PhonedryShell.#onSwitchCharacter,
       closeTargets: PhonedryShell.#onCloseTargets,
       confirmTargets: PhonedryShell.#onConfirmTargets,
       toggleTarget: PhonedryShell.#onToggleTarget,
@@ -140,6 +142,10 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
 
     // What something is, opened by holding it.
     describe: { template: `modules/${MODULE_ID}/templates/parts/describe.hbs` },
+
+    // Which of the player's own characters is showing, opened by holding the
+    // portrait or name in the header.
+    switcher: { template: `modules/${MODULE_ID}/templates/parts/switcher.hbs` },
 
     // Always rendered, shown only by a media query. Whether a phone is being
     // held sideways is not something the shell should have to track.
@@ -286,6 +292,26 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /** Removes the long-press listeners bound at the last render. @type {Function|null} */
   #unbindLongPress = null;
+
+  /** Removes the character-switch long-press listener bound at the last render. @type {Function|null} */
+  #unbindCharacterSwitch = null;
+
+  /**
+   * Whether the character switcher panel is showing.
+   *
+   * A player with only one owned character never has anywhere to switch to,
+   * but the hold still opens the panel — it says so rather than doing nothing,
+   * which would read as the gesture having failed rather than as there being
+   * nothing behind it.
+   *
+   * @type {boolean}
+   */
+  #switcherOpen = false;
+
+  /** Whether the character switcher is open. Exposed for the smoke tests. */
+  get switcherOpen() {
+    return this.#switcherOpen;
+  }
 
   /**
    * Compendium index entries, per browser.
@@ -538,6 +564,18 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       targets: this.#prepareTargets(),
       describeBack: this.#describeStack.length > 0,
 
+      // Reuses `resolveCharacter`'s own reckoning of what this user owns,
+      // rather than walking `game.actors` a second time — it already excludes
+      // NPCs and vehicles for the same reason the empty state does. The
+      // currently-shown actor is filtered out here rather than there, because
+      // the empty state's use of `candidates` needs the full list.
+      switcher: {
+        open: this.#switcherOpen,
+        candidates: candidates
+          .filter(a => a.id !== actor?.id)
+          .map(a => ({ id: a.id, name: a.name, img: a.img }))
+      },
+
       empty: actor ? null : {
         reason,
         userName: game.user.name,
@@ -699,6 +737,7 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
     this.#applyRollMode();
     this.#applyHpEditorState();
     this.#bindLongPress();
+    this.#bindCharacterSwitch();
     this.#registerHooks();
 
     // Bound to the application root rather than to the field, because the field
@@ -776,6 +815,28 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
+   * Wire up holding the portrait or name to switch character.
+   *
+   * A separate binding from `#bindLongPress` rather than a second case inside
+   * it: that one resolves a describable document and always has something to
+   * show, where this one opens a fixed panel regardless of what was held, and
+   * conflating the two selectors would mean the header also responding to
+   * `data-describe`, which it does not carry.
+   *
+   * Rebound on every render for the same reason as `#bindLongPress` — a
+   * partial re-render replaces the header's elements, and the old binding
+   * would be listening on detached nodes.
+   */
+  #bindCharacterSwitch() {
+    this.#unbindCharacterSwitch?.();
+    const selector = "[data-switch-character]";
+    this.#unbindCharacterSwitch = bindLongPress(this.element, selector, () => {
+      this.#switcherOpen = true;
+      this.render({ parts: ["switcher"] });
+    });
+  }
+
+  /**
    * Send a scrolling container back to the top.
    *
    * The counterpart to the `scrollable` declarations on the parts. Preserving
@@ -848,6 +909,37 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
       // or skills, and rebuilding them on every d20 would make the sheet stutter
       // through a combat round.
       this.render({ parts: ["log"] });
+    })]);
+
+    /*
+     * `character` can change without any action of this sheet's own — the GM
+     * reassigning it from Configure Players, or another of this player's
+     * clients switching it — and not just through the switcher panel. Routing
+     * every path through this one hook, rather than resetting state inline in
+     * the switch handler, means a reassignment from outside Phonedry is
+     * handled exactly the same way as one made from inside it.
+     *
+     * A full state reset rather than just a re-render: every panel here is
+     * scoped to whichever actor was showing when it opened, and carrying one
+     * across to a different character is never right — a description panel
+     * left open would show a rule for an item the new character may not even
+     * have.
+     */
+    this.#hooks.push(["updateUser", Hooks.on("updateUser", (user, changes) => {
+      if ( (user.id !== game.user.id) || !("character" in changes) ) return;
+
+      this.#tab = DEFAULT_TAB;
+      this.#switcherOpen = false;
+      this.#describe = null;
+      this.#describeStack = [];
+      this.#browserMode = null;
+      this.#browserQuery = "";
+      this.#targeting = null;
+      this.#selectedTargets = new Set();
+      this.#hpEditorOpen = false;
+      this.#rollLog = [];
+
+      this.render();
     })]);
   }
 
@@ -1353,6 +1445,43 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
+   * Close the character switcher.
+   *
+   * Same backdrop-tap convention as the description panel: the backdrop and
+   * the close button share this action, and a tap that lands on the panel
+   * itself — the heading, or the gap between rows — has to be let through
+   * rather than closing the panel out from under a player who is still
+   * choosing.
+   *
+   * @this {PhonedryShell}
+   */
+  static #onCloseSwitcher(event, target) {
+    const isBackdrop = target.classList.contains("phonedry-switcher");
+    if ( isBackdrop && event.target.closest(".phonedry-switcher__panel") ) return;
+
+    this.#switcherOpen = false;
+    this.render({ parts: ["switcher"] });
+  }
+
+  /**
+   * Switch which of the player's own characters this sheet shows.
+   *
+   * Only sets `user.character` — everything else that changing it entails
+   * (resetting the open tab, closing whatever panel was open, clearing the
+   * roll log) happens in the `updateUser` hook in `#registerHooks`, so a
+   * reassignment made here is handled identically to one made from the GM's
+   * Configure Players dialog.
+   *
+   * @this {PhonedryShell}
+   */
+  static async #onSwitchCharacter(event, target) {
+    const id = target.dataset.actorId;
+    if ( !id || (id === this.#actor?.id) ) return;
+
+    await game.user.update({ character: id });
+  }
+
+  /**
    * Add the tapped row to the character.
    *
    * The browser stays open: adding is something done in a run — spells at level
@@ -1392,6 +1521,8 @@ export class PhonedryShell extends HandlebarsApplicationMixin(ApplicationV2) {
   _onClose(options) {
     this.#unbindLongPress?.();
     this.#unbindLongPress = null;
+    this.#unbindCharacterSwitch?.();
+    this.#unbindCharacterSwitch = null;
 
     this.element.removeEventListener("input", this.#onFormulaInput);
     this.element.removeEventListener("keydown", this.#onFormulaKey);
