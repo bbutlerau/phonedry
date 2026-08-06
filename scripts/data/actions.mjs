@@ -83,9 +83,11 @@ export function isPassiveActivation(type, config = {}) {
  * @returns {boolean}
  */
 export function itemOffersActions(item) {
-  // Spells have their own screen, with slots and preparation beside them. A
-  // spell listed here as well would be the same tap in two places, and the
-  // duplicate is the thing players complain about on other sheets.
+  // Spells have their own screen, with slots and preparation beside them, and
+  // most of them belong there and nowhere else — a duplicate of every buff and
+  // utility spell here is the thing players complain about on other sheets.
+  // `qualifyingSpellActivity`, below, is the narrow exception: a spell counts
+  // there rather than here, on its own path through `buildActionGroups`.
   if ( item.type === "spell" ) return false;
 
   if ( EQUIPPED_ONLY.has(item.type) && !item.system?.equipped ) return false;
@@ -94,6 +96,58 @@ export function itemOffersActions(item) {
 }
 
 /* -------------------------------------------- */
+
+/**
+ * Which of a spell's activities, if any, earns it a place on the actions
+ * screen as well as its own.
+ *
+ * Two kinds of spell are things a fight reaches for by reflex rather than by
+ * paging through a spell list: a smite, which exists only to modify a hit that
+ * has already landed, and an attack cantrip, cast every round the way a weapon
+ * is swung. Both earn a place beside the weapon they ride alongside.
+ *
+ * The rule is activation *and* purpose, not activation alone — most bonus
+ * action spells are support or buffs, not reflexes, and cross-listing every
+ * one of them would crowd the screen with the exact duplication
+ * `itemOffersActions` excludes spells to avoid. A leveled spell with a bonus
+ * or reaction activation qualifies on activation; a cantrip only qualifies
+ * alongside an actual attack roll, which is what "cast every round" means.
+ *
+ * Checked activity by activity rather than by the item's first one, because a
+ * spell with several activities is not guaranteed to have the qualifying kind
+ * listed first — Divine Smite pairs each of its damage activities with an
+ * internal "forward" one that carries no activation of its own worth reading.
+ *
+ * @param {object} item
+ * @param {object} [config]  `CONFIG.DND5E`.
+ * @returns {object|null}
+ */
+export function qualifyingSpellActivity(item, config = {}) {
+  if ( item.type !== "spell" ) return null;
+
+  const isCantrip = (item.system?.level ?? 0) === 0;
+
+  for ( const activity of item.system?.activities?.contents ?? [] ) {
+    const type = activity.activation?.type ?? "";
+    if ( isPassiveActivation(type, config) ) continue;
+
+    if ( (type === "bonus") || (type === "reaction") ) return activity;
+    if ( isCantrip && (activity.type === "attack") && (type === "action") ) return activity;
+  }
+
+  return null;
+}
+
+/**
+ * Does this spell also belong on the actions screen?
+ *
+ * @param {object} item
+ * @param {object} [config]
+ * @returns {boolean}
+ */
+export function spellCrossListsOnActions(item, config = {}) {
+  return !!qualifyingSpellActivity(item, config);
+}
 
 /**
  * Describe one activity as a row.
@@ -118,6 +172,12 @@ export function describeActivity(activity, item, multiple, typeLabels = {}) {
     key: `${item.id}.${activity.id}`,
     itemId: item.id,
     activityId: activity.id,
+    spellId: null,
+
+    // Which shell action a tap dispatches to. A row is one or the other never
+    // both, so the template reads this rather than branching on whether
+    // `spellId` is set — see `describeSpellAction` for the other side.
+    action: "useActivity",
 
     name,
 
@@ -182,6 +242,61 @@ export function describeActivity(activity, item, multiple, typeLabels = {}) {
   };
 }
 
+/**
+ * Describe a cross-listed spell as a row.
+ *
+ * One row per spell rather than one per activity, unlike `describeActivity`.
+ * That is a deliberate difference, not an oversight: a multi-activity feature
+ * like Channel Divinity offers the player a real choice between activities,
+ * which is exactly what giving each its own row is for. Divine Smite's four
+ * activities are not that — they are two tiers paired with their own internal
+ * plumbing — and dnd5e already knows how to resolve a spell's own activity
+ * when there is more than one to choose from. Routing the tap through
+ * `castSpell`, the same action the spells screen uses, rather than through
+ * `useActivity`, is what lets it lean on that instead of guessing.
+ *
+ * @param {object} item      A spell item.
+ * @param {object} activity  The activity `qualifyingSpellActivity` found —
+ *                           read for its numbers, not used to dispatch the tap.
+ * @param {object} [typeLabels]
+ * @returns {object}
+ */
+export function describeSpellAction(item, activity, typeLabels = {}) {
+  const labels = activity.labels ?? {};
+
+  // Uses live on the item, same as `describeActivity` reads them — Divine
+  // Smite really does carry a limited-use pool here, not just a spell slot.
+  const uses = item.system?.uses ?? {};
+
+  return {
+    key: `spell.${item.id}.${activity.id}`,
+    itemId: item.id,
+    activityId: null,
+    spellId: item.id,
+    action: "castSpell",
+
+    name: item.name,
+    subtitle: null,
+    img: item.img,
+
+    toHit: labels.toHit ?? null,
+    damage: (labels.damages ?? []).map(d => d.formula).filter(Boolean).join(" + ") || null,
+    range: labels.range ?? null,
+
+    uses: (uses.max > 0) ? { value: uses.value ?? 0, max: uses.max } : null,
+    spent: (uses.max > 0) && ((uses.value ?? 0) <= 0),
+
+    activation: labels.activation ?? null,
+
+    itemType: item.type,
+    typeLabel: typeLabels[item.type] ?? null,
+
+    stacks: 1,
+    merged: false,
+    mergeKey: `spell::${item.id}`
+  };
+}
+
 /* -------------------------------------------- */
 
 /**
@@ -228,6 +343,8 @@ export function mergeEntries(entries) {
     if ( pointerSpent.get(entry.mergeKey) && !entry.spent ) {
       existing.itemId = entry.itemId;
       existing.activityId = entry.activityId;
+      existing.spellId = entry.spellId;
+      existing.action = entry.action;
       existing.key = entry.key;
       pointerSpent.set(entry.mergeKey, false);
     }
@@ -260,6 +377,17 @@ export function buildActionGroups(items = [], config = {}, typeLabels = {}) {
   const groups = new Map();
 
   for ( const item of items ) {
+    // Spells take their own path through this loop: one row for the single
+    // activity that earned the spell its place, rather than one per activity
+    // the way a feature does. See `qualifyingSpellActivity` for why.
+    const spellActivity = qualifyingSpellActivity(item, config);
+    if ( spellActivity ) {
+      const group = spellActivity.activation?.type || OTHER_GROUP;
+      if ( !groups.has(group) ) groups.set(group, []);
+      groups.get(group).push(describeSpellAction(item, spellActivity, typeLabels));
+      continue;
+    }
+
     if ( !itemOffersActions(item) ) continue;
 
     const activities = item.system.activities.contents;

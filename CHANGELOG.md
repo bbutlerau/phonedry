@@ -364,6 +364,10 @@ All notable changes to Phonedry are recorded here. Versions follow
   portrait or name in the header opens a dimmed panel listing the player's
   other owned characters; tapping one switches the sheet to show it.
 
+- A smite or an attack cantrip now also appears on the actions screen, beside
+  the weapon it modifies or the same way a weapon attack does, rather than
+  living only on the spells screen where a fight has no reason to look for it.
+
 ### Fixed
 - The highest spell slot box stood taller than the rest. The grid row measures a
   few pixels taller than any slot in it, and the default stretch filled that gap

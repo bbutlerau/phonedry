@@ -1,11 +1,15 @@
 {{!--
-  The actions screen: everything the character can do on their turn that is not
-  a spell, grouped by what it costs.
+  The actions screen: everything the character can do on their turn, grouped by
+  what it costs. Spells still live on their own screen and stay off this one,
+  with one narrow exception: a smite or an attack cantrip is a reflex a fight
+  reaches for the way it reaches for a weapon, so those cross-list here as well
+  as there. See `qualifyingSpellActivity` in `data/actions.mjs`.
 
   A row is an activity rather than an item. Channel Divinity is one item with
   three activities sharing one pool of uses, and giving each its own row is what
   lets a tap do the thing instead of opening a dialog to ask which one was
-  meant.
+  meant. A cross-listed spell is the one exception to that too — one row per
+  spell, not per activity, cast the same way the spells screen casts it.
 
   A tab body, included by content.hbs. No wrapper and no single-root
   constraint; those belong to the part.
@@ -35,9 +39,14 @@
             {{!-- The whole row is the button. There is no second control here
                   the way a spell has a preparation toggle, so nothing competes
                   for the tap and the target can be the full width. --}}
+            {{!-- Which shell action this dispatches to, set by the mapper —
+                  a cross-listed spell casts through the same path the spells
+                  screen uses, everything else calls its own activity
+                  directly. See `describeSpellAction` and `describeActivity`. --}}
             <button type="button" class="phonedry-action__use"
-                    data-action="useActivity"
+                    data-action="{{this.action}}"
                     data-item-id="{{this.itemId}}" data-activity-id="{{this.activityId}}"
+                    data-spell-id="{{this.spellId}}"
                     data-describe="{{this.itemId}}">
 
               <img class="phonedry-action__icon" src="{{this.img}}" alt="" />

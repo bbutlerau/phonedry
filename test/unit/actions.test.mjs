@@ -11,8 +11,9 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  buildActionGroups, buildActionsView, describeActivity, isPassiveActivation,
-  itemOffersActions, mergeEntries, OTHER_GROUP
+  buildActionGroups, buildActionsView, describeActivity, describeSpellAction,
+  isPassiveActivation, itemOffersActions, mergeEntries, OTHER_GROUP,
+  qualifyingSpellActivity, spellCrossListsOnActions
 } from "../../scripts/data/actions.mjs";
 
 /** Item type names, as core supplies them in `CONFIG.Item.typeLabels`. */
@@ -42,7 +43,9 @@ const CONFIG_DND5E = {
  * @param {object} [overrides]
  * @returns {object}
  */
-function activity({ id = "act1", name = "Attack", type = "action", img, labels = {} } = {}) {
+function activity({
+  id = "act1", name = "Attack", type = "action", activityType, img, labels = {}
+} = {}) {
   return {
     id,
     name,
@@ -50,6 +53,13 @@ function activity({ id = "act1", name = "Attack", type = "action", img, labels =
     // dnd5e gives an activity a generic icon for what it is, so every save
     // activity carries the same one.
     img,
+
+    // The activity's own document type — "attack", "damage", "save" — as
+    // distinct from `activation.type` below, which is when it can be used
+    // rather than what kind of roll it makes. Left unset by default because
+    // most of the fixtures in this file do not care; only the qualifying-spell
+    // tests need it.
+    ...(activityType === undefined ? {} : { type: activityType }),
 
     // dnd5e leaves the type an empty string for riders like Divine Strike.
     activation: { type },
@@ -67,7 +77,7 @@ function activity({ id = "act1", name = "Attack", type = "action", img, labels =
  */
 function item({
   id = "item1", name = "Mace", type = "weapon", equipped = true,
-  activities = [activity()], uses = {}, source
+  activities = [activity()], uses = {}, source, level
 } = {}) {
   return {
     id,
@@ -80,7 +90,10 @@ function item({
     // things with the same name.
     ...(source === undefined ? {} : { _stats: { compendiumSource: source } }),
 
-    system: { equipped, uses, activities: { contents: activities } }
+    system: {
+      equipped, uses, activities: { contents: activities },
+      ...(level === undefined ? {} : { level })
+    }
   };
 }
 
@@ -121,6 +134,112 @@ describe("itemOffersActions", () => {
   it("excludes anything with no activities at all", () => {
     assert.equal(itemOffersActions(item({ activities: [] })), false);
     assert.equal(itemOffersActions({ id: "x", type: "loot", system: {} }), false);
+  });
+});
+
+/* -------------------------------------------- */
+
+describe("qualifyingSpellActivity", () => {
+  it("qualifies a leveled spell with a bonus or reaction activation", () => {
+    const smite = item({
+      type: "spell", level: 1,
+      activities: [activity({ id: "dmg", type: "bonus", activityType: "damage" })]
+    });
+    assert.equal(qualifyingSpellActivity(smite, CONFIG_DND5E)?.id, "dmg");
+
+    const shield = item({
+      type: "spell", level: 1,
+      activities: [activity({ id: "save", type: "reaction", activityType: "save" })]
+    });
+    assert.equal(qualifyingSpellActivity(shield, CONFIG_DND5E)?.id, "save");
+  });
+
+  it("qualifies an attack cantrip, but not an attack spell with a level", () => {
+    const fireBolt = item({
+      type: "spell", level: 0,
+      activities: [activity({ id: "atk", type: "action", activityType: "attack" })]
+    });
+    assert.equal(qualifyingSpellActivity(fireBolt, CONFIG_DND5E)?.id, "atk");
+
+    const guidingBolt = item({
+      type: "spell", level: 1,
+      activities: [activity({ id: "atk", type: "action", activityType: "attack" })]
+    });
+    assert.equal(qualifyingSpellActivity(guidingBolt, CONFIG_DND5E), null);
+  });
+
+  it("does not qualify a cantrip with no attack roll, or a bonus-action buff spell", () => {
+    // Most bonus-action spells are support, not reflexes — cross-listing every
+    // one would crowd the screen with the duplication `itemOffersActions`
+    // excludes spells to avoid in the first place.
+    const light = item({
+      type: "spell", level: 0,
+      activities: [activity({ id: "u", type: "action", activityType: "utility" })]
+    });
+    assert.equal(qualifyingSpellActivity(light, CONFIG_DND5E), null);
+
+    const heroism = item({
+      type: "spell", level: 1,
+      activities: [activity({ id: "u", type: "bonus", activityType: "utility" })]
+    });
+    // A bonus-action buff is exactly the qualifying case by the rule as
+    // written — activation is what is checked for a leveled spell, not
+    // purpose, because dnd5e has no field that would tell "buff" from
+    // "reflex" apart. This documents that boundary rather than hiding it.
+    assert.equal(qualifyingSpellActivity(heroism, CONFIG_DND5E)?.id, "u");
+  });
+
+  it("finds the qualifying activity even when it is not listed first", () => {
+    // Divine Smite pairs each damage activity with an internal "forward" one;
+    // this fixture instead puts a passive rider first, to prove the search
+    // does not stop at the first activity regardless of what it is.
+    const smite = item({
+      type: "spell", level: 1,
+      activities: [
+        activity({ id: "rider", type: "", activityType: "damage" }),
+        activity({ id: "dmg", type: "bonus", activityType: "damage" })
+      ]
+    });
+    assert.equal(qualifyingSpellActivity(smite, CONFIG_DND5E)?.id, "dmg");
+  });
+
+  it("ignores a non-spell entirely", () => {
+    assert.equal(qualifyingSpellActivity(item({ type: "feat" }), CONFIG_DND5E), null);
+  });
+});
+
+describe("spellCrossListsOnActions", () => {
+  it("mirrors qualifyingSpellActivity as a boolean", () => {
+    const smite = item({
+      type: "spell", level: 1,
+      activities: [activity({ type: "bonus", activityType: "damage" })]
+    });
+    assert.equal(spellCrossListsOnActions(smite, CONFIG_DND5E), true);
+
+    const light = item({ type: "spell", level: 0 });
+    assert.equal(spellCrossListsOnActions(light, CONFIG_DND5E), false);
+  });
+});
+
+describe("describeSpellAction", () => {
+  it("names the row after the spell and routes the tap through castSpell", () => {
+    const smite = item({ id: "smite1", name: "Divine Smite", type: "spell", level: 1 });
+    const row = describeSpellAction(smite, activity({ id: "dmg" }));
+
+    assert.equal(row.name, "Divine Smite");
+    assert.equal(row.action, "castSpell");
+    assert.equal(row.spellId, "smite1");
+    assert.equal(row.itemId, "smite1");
+    assert.equal(row.activityId, null);
+  });
+
+  it("reads uses from the item, the same as a feature does", () => {
+    const smite = item({
+      id: "smite1", type: "spell", level: 1, uses: { value: 1, max: 1 }
+    });
+    const row = describeSpellAction(smite, activity());
+    assert.deepEqual(row.uses, { value: 1, max: 1 });
+    assert.equal(row.spent, false);
   });
 });
 
@@ -278,6 +397,51 @@ describe("buildActionGroups", () => {
 
     // With no config entry there is no label to use, so the raw type stands in.
     assert.equal(groups[1].label, "teleport");
+  });
+
+  it("cross-lists a qualifying spell alongside features in the same group", () => {
+    const items = [
+      item({ id: "cd", name: "Channel Divinity", type: "feat",
+        activities: [activity({ type: "bonus" })] }),
+      item({ id: "smite", name: "Divine Smite", type: "spell", level: 1,
+        activities: [activity({ id: "dmg", type: "bonus", activityType: "damage" })] })
+    ];
+
+    const [bonus] = buildActionGroups(items, CONFIG_DND5E);
+
+    assert.equal(bonus.type, "bonus");
+    assert.deepEqual(bonus.entries.map(e => e.name), ["Channel Divinity", "Divine Smite"]);
+
+    const smite = bonus.entries.find(e => e.name === "Divine Smite");
+    assert.equal(smite.action, "castSpell");
+    assert.equal(smite.spellId, "smite");
+    assert.equal(smite.itemType, "spell");
+  });
+
+  it("gives a cross-listed spell one row, not one per activity", () => {
+    // Divine Smite really does carry four activities — two damage tiers each
+    // paired with an internal "forward" one — and none of that plumbing
+    // belongs on the actions screen as a row of its own.
+    const smite = item({
+      id: "smite", name: "Divine Smite", type: "spell", level: 1,
+      activities: [
+        activity({ id: "dmg1", type: "bonus", activityType: "damage" }),
+        activity({ id: "fwd1", type: "bonus", activityType: "forward" }),
+        activity({ id: "dmg2", type: "bonus", activityType: "damage" }),
+        activity({ id: "fwd2", type: "bonus", activityType: "forward" })
+      ]
+    });
+
+    const [bonus] = buildActionGroups([smite], CONFIG_DND5E);
+    assert.equal(bonus.entries.length, 1);
+  });
+
+  it("does not cross-list a spell that does not qualify", () => {
+    const light = item({ id: "light", name: "Light", type: "spell", level: 0,
+      activities: [activity({ type: "action", activityType: "utility" })] });
+
+    const groups = buildActionGroups([light], CONFIG_DND5E);
+    assert.deepEqual(groups, []);
   });
 });
 
